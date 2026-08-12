@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function RecordingPage() {
@@ -16,6 +16,59 @@ export default function RecordingPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [secondsRemaining, setSecondsRemaining] = useState(durationMinutes * 60)
   const [hasRecorded, setHasRecorded] = useState(false)
+  const [recordingSize, setRecordingSize] = useState(0)
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+
+  // Initialize recording
+  useEffect(() => {
+    async function initRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const mediaRecorder = new MediaRecorder(stream)
+        mediaRecorderRef.current = mediaRecorder
+
+        mediaRecorder.ondataavailable = (e) => {
+          audioChunksRef.current.push(e.data)
+        }
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+          setRecordingSize(Math.round(audioBlob.size / 1024)) // KB
+          await saveRecordingToIndexedDB(audioBlob)
+          audioChunksRef.current = []
+        }
+      } catch (err) {
+        console.error('Microphone access denied:', err)
+      }
+    }
+
+    initRecording()
+  }, [])
+
+  // Save recording to IndexedDB
+  async function saveRecordingToIndexedDB(blob: Blob) {
+    return new Promise((resolve) => {
+      const request = indexedDB.open('EvaluateDB', 1)
+
+      request.onupgradeneeded = (e) => {
+        const db = (e.target as IDBOpenDBRequest).result
+        if (!db.objectStoreNames.contains('recordings')) {
+          db.createObjectStore('recordings')
+        }
+      }
+
+      request.onsuccess = () => {
+        const db = request.result
+        const transaction = db.transaction(['recordings'], 'readwrite')
+        const store = transaction.objectStore('recordings')
+        const sessionKey = `session_${date}_${topic}`
+        store.put(blob, sessionKey)
+        resolve(null)
+      }
+    })
+  }
 
   useEffect(() => {
     if (!isRecording || secondsRemaining <= 0) return
@@ -23,7 +76,7 @@ export default function RecordingPage() {
     const interval = setInterval(() => {
       setSecondsRemaining(prev => {
         if (prev <= 1) {
-          setIsRecording(false)
+          stopRecording()
           return 0
         }
         return prev - 1
@@ -33,18 +86,28 @@ export default function RecordingPage() {
     return () => clearInterval(interval)
   }, [isRecording, secondsRemaining])
 
-  function startRecording() {
-    setIsRecording(true)
-    setHasRecorded(true)
+  async function startRecording() {
+    if (mediaRecorderRef.current) {
+      audioChunksRef.current = []
+      mediaRecorderRef.current.start()
+      setIsRecording(true)
+      setHasRecorded(true)
+    }
   }
 
   function stopRecording() {
-    setIsRecording(false)
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
   }
 
   function resetTimer() {
+    stopRecording()
     setSecondsRemaining(durationMinutes * 60)
     setHasRecorded(false)
+    setRecordingSize(0)
+    audioChunksRef.current = []
   }
 
   function proceedToUpload() {
@@ -145,10 +208,19 @@ export default function RecordingPage() {
         )}
       </div>
 
+      {/* Recording info */}
+      {recordingSize > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+          <p className="text-sm text-green-900">
+            ✓ <strong>Recording saved:</strong> {recordingSize} KB stored on your device
+          </p>
+        </div>
+      )}
+
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <p className="text-sm text-blue-900">
-          💡 <strong>Tip:</strong> This timer helps you stay aware of your training duration. The actual recording will be uploaded next.
+          💡 <strong>Tip:</strong> Your recording is stored securely on this device. Click "Upload" to generate quiz questions from your training audio.
         </p>
       </div>
     </div>

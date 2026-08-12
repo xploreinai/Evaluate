@@ -1,24 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-// ─── Placeholder org + trainer IDs ───────────────────────────────────────────
+// Placeholder IDs (for demo without auth)
 const PLACEHOLDER_ORG_ID = '00000000-0000-0000-0000-000000000001'
 const PLACEHOLDER_TRAINER_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function UploadPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+
   const [sessionMeta, setSessionMeta] = useState<{
     date: string
     startTime: string
     endTime: string
     topic: string
   } | null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'error'>('idle')
+
+  const [status, setStatus] = useState<'idle' | 'processing' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<string>('')
 
   useEffect(() => {
     const date = searchParams.get('date')
@@ -31,56 +34,132 @@ export default function UploadPage() {
     }
   }, [searchParams])
 
-  async function handleUpload(e: React.FormEvent) {
-    e.preventDefault()
-    if (!file || !sessionMeta) return
+  async function getRecordingFromIndexedDB(sessionKey: string): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const request = indexedDB.open('EvaluateDB', 1)
 
-    setStatus('uploading')
+      request.onsuccess = () => {
+        const db = request.result
+        const transaction = db.transaction(['recordings'], 'readonly')
+        const store = transaction.objectStore('recordings')
+        const getRequest = store.get(sessionKey)
+
+        getRequest.onsuccess = () => {
+          resolve(getRequest.result || null)
+        }
+      }
+
+      request.onerror = () => {
+        resolve(null)
+      }
+    })
+  }
+
+  async function transcribeAudio(audioBlob: Blob): Promise<string> {
+    setProgress('Transcribing audio...')
+
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'recording.wav')
+
+    const response = await fetch('/api/transcribe', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error('Transcription failed')
+    }
+
+    const data = await response.json()
+    return data.transcript
+  }
+
+  async function generateQuestions(transcript: string): Promise<any[]> {
+    setProgress('Generating quiz questions...')
+
+    const response = await fetch('/api/generate-questions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transcript }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Question generation failed')
+    }
+
+    const data = await response.json()
+    return data.questions
+  }
+
+  async function handleProcess(e: React.FormEvent) {
+    e.preventDefault()
+    if (!sessionMeta) return
+
+    setStatus('processing')
     setError(null)
 
     try {
-      // Step 1 — Create the session row in the database
+      // Step 1: Get recording from IndexedDB
+      setProgress('Retrieving recording...')
+      const sessionKey = `session_${sessionMeta.date}_${sessionMeta.topic}`
+      const audioBlob = await getRecordingFromIndexedDB(sessionKey)
+
+      if (!audioBlob) {
+        throw new Error('No recording found. Please record audio first.')
+      }
+
+      // Step 2: Transcribe audio using Whisper
+      const transcript = await transcribeAudio(audioBlob)
+
+      // Step 3: Generate questions using GPT-4
+      const questions = await generateQuestions(transcript)
+
+      if (questions.length === 0) {
+        throw new Error('Failed to generate questions')
+      }
+
+      // Step 4: Create session in Supabase (NO recording file)
+      setProgress('Saving session...')
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
         .insert({
-          org_id: PLACEHOLDER_ORG_ID,
           trainer_id: PLACEHOLDER_TRAINER_ID,
-          title: sessionMeta.topic.trim(),
-          department: null,
+          topic: sessionMeta.topic.trim(),
           session_date: sessionMeta.date,
-          status: 'processing',
-          pass_threshold: 70,
+          start_time: sessionMeta.startTime,
+          end_time: sessionMeta.endTime,
+          status: 'draft',
         })
         .select()
         .single()
 
       if (sessionError) throw sessionError
 
-      // Step 2 — Upload the recording directly to Supabase Storage
-      const ext = file.name.split('.').pop() ?? 'mp4'
-      const storagePath = `${session.id}/recording.${ext}`
+      // Step 5: Insert questions into Supabase
+      setProgress('Saving questions...')
+      const questionsToInsert = questions.map((q) => ({
+        session_id: session.id,
+        question: q.question,
+        option_a: q.option_a,
+        option_b: q.option_b,
+        option_c: q.option_c,
+        option_d: q.option_d,
+        correct: q.correct.toLowerCase(),
+      }))
 
-      const { error: storageError } = await supabase.storage
-        .from('recordings')
-        .upload(storagePath, file, { upsert: false })
+      const { error: questionsError } = await supabase
+        .from('questions')
+        .insert(questionsToInsert)
 
-      if (storageError) throw storageError
+      if (questionsError) throw questionsError
 
-      // Step 3 — Save the storage path back to the session row
-      const { error: updateError } = await supabase
-        .from('sessions')
-        .update({ recording_url: storagePath })
-        .eq('id', session.id)
-
-      if (updateError) throw updateError
-
-      // Step 4 — Trigger the Edge Function that runs Whisper + GPT-4o
-      await supabase.functions.invoke('process-session', {
-        body: { session_id: session.id },
-      })
-
-      // Step 5 — Go to the review screen
-      window.location.href = `/session/${session.id}/review`
+      // Step 6: Navigate to review page
+      setProgress('Complete! Redirecting...')
+      setTimeout(() => {
+        router.push(`/session/${session.id}/review`)
+      }, 1000)
 
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong.'
@@ -97,104 +176,50 @@ export default function UploadPage() {
     <div>
       {/* Page heading */}
       <h2 className="text-2xl font-bold text-gray-900 mb-1">
-        Upload your recording
+        Process your recording
       </h2>
       <p className="text-gray-500 mb-8">
         {sessionMeta.topic} • {new Date(sessionMeta.date).toLocaleDateString()} • {sessionMeta.startTime}–{sessionMeta.endTime}
       </p>
 
-      <form onSubmit={handleUpload} className="space-y-6">
-
-        {/* File drop zone */}
-        <Field label="Recording file" required>
-          <label
-            htmlFor="file-input"
-            className="flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-xl px-6 py-10 cursor-pointer hover:border-blue-400 transition-colors text-center"
-          >
-            {file ? (
-              <>
-                <span className="text-2xl mb-2">🎙️</span>
-                <p className="font-medium text-gray-900">{file.name}</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  {(file.size / 1024 / 1024).toFixed(1)} MB — click to change
-                </p>
-              </>
-            ) : (
-              <>
-                <span className="text-3xl mb-3">☁️</span>
-                <p className="text-gray-600">
-                  Drop your recording here or{' '}
-                  <span className="text-blue-600 font-medium">browse</span>
-                </p>
-                <p className="text-gray-400 text-sm mt-1">
-                  Audio or video · MP3, MP4, M4A, WAV · up to 60 min
-                </p>
-              </>
-            )}
-            <input
-              id="file-input"
-              type="file"
-              accept="audio/*,video/*"
-              onChange={e => setFile(e.target.files?.[0] ?? null)}
-              required
-              className="hidden"
-            />
-          </label>
-        </Field>
+      <form onSubmit={handleProcess} className="space-y-6">
+        {/* Status message */}
+        {status === 'processing' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+            <div className="animate-spin inline-block mb-3">⚙️</div>
+            <p className="font-semibold text-blue-900 mb-1">Processing...</p>
+            <p className="text-sm text-blue-600">{progress}</p>
+          </div>
+        )}
 
         {/* Error message */}
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            {error}
-          </p>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <p className="text-sm text-red-600">
+              <strong>Error:</strong> {error}
+            </p>
+          </div>
         )}
 
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3.5 rounded-xl hover:bg-gray-50 transition-colors text-base"
-          >
-            ← Back
-          </button>
-          <button
-            type="submit"
-            disabled={status === 'uploading' || !file}
-            className="flex-1 bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
-          >
-            {status === 'uploading' ? 'Uploading…' : 'Upload and generate quiz →'}
-          </button>
+        {/* Info box */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+          <p className="text-green-900">
+            ✓ <strong>Recording found</strong> on your device ({sessionMeta.topic})
+          </p>
+          <p className="text-sm text-green-700 mt-2">
+            Your recording will be transcribed and AI will generate 10 quiz questions based on the content.
+          </p>
         </div>
 
+        {/* Process button */}
+        <button
+          type="submit"
+          disabled={status === 'processing'}
+          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 transition-colors disabled:bg-gray-400 text-base"
+        >
+          {status === 'processing' ? 'Processing...' : '🚀 Generate Quiz Questions'}
+        </button>
       </form>
     </div>
   )
 }
-
-// ─── Small helper components ──────────────────────────────────────────────────
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const inputClass =
-  'w-full border border-gray-300 rounded-xl px-4 py-2.5 text-gray-900 ' +
-  'placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ' +
-  'focus:border-transparent transition'
