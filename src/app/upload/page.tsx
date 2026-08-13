@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase, supabaseConfigError } from '@/lib/supabase'
 import { RequireAuth } from '@/lib/useAuth'
+import { sessionKey, loadSegments } from '@/lib/recordings'
 
 
 // Supabase rejects a query with a plain object ({ message, details, hint, code }),
@@ -35,6 +36,7 @@ function UploadPageContent() {
   const [progress, setProgress] = useState<string>('')
 
   const [sizeMb, setSizeMb] = useState<number | null>(null)
+  const [partCount, setPartCount] = useState(0)
 
   useEffect(() => {
     const date = searchParams.get('date')
@@ -44,36 +46,32 @@ function UploadPageContent() {
 
     if (date && startTime && endTime && topic) {
       setSessionMeta({ date, startTime, endTime, topic })
-      getRecordingFromIndexedDB(`session_${date}_${topic}`).then((blob) => {
-        if (blob) setSizeMb(blob.size / (1024 * 1024))
+      loadSegments(sessionKey(date, topic)).then((segments) => {
+        if (segments.length) {
+          setSizeMb(segments.reduce((sum, b) => sum + b.size, 0) / (1024 * 1024))
+          setPartCount(segments.length)
+        }
       })
     }
   }, [searchParams])
 
-  async function getRecordingFromIndexedDB(sessionKey: string): Promise<Blob | null> {
-    return new Promise((resolve) => {
-      const request = indexedDB.open('EvaluateDB', 1)
-
-      request.onsuccess = () => {
-        const db = request.result
-        const transaction = db.transaction(['recordings'], 'readonly')
-        const store = transaction.objectStore('recordings')
-        const getRequest = store.get(sessionKey)
-
-        getRequest.onsuccess = () => {
-          resolve(getRequest.result || null)
-        }
-      }
-
-      request.onerror = () => {
-        resolve(null)
-      }
-    })
+  // Each part is sent as its own request — one long upload would exceed the
+  // server's 4.5 MB body limit and its 60-second time limit.
+  async function transcribeAll(segments: Blob[]): Promise<string> {
+    const parts: string[] = []
+    for (let i = 0; i < segments.length; i++) {
+      setProgress(
+        segments.length > 1
+          ? `Transcribing part ${i + 1} of ${segments.length}…`
+          : 'Transcribing audio…'
+      )
+      parts.push(await transcribeSegment(segments[i]))
+    }
+    // Joined with blank lines so the model sees the parts as continuous speech.
+    return parts.filter((p) => p.trim()).join('\n\n')
   }
 
-  async function transcribeAudio(audioBlob: Blob): Promise<string> {
-    setProgress('Transcribing audio...')
-
+  async function transcribeSegment(audioBlob: Blob): Promise<string> {
     // Whisper identifies the audio format from the filename extension, so it
     // has to match what the browser actually recorded (usually WebM/Opus).
     const type = audioBlob.type || 'audio/webm'
@@ -85,13 +83,13 @@ function UploadPageContent() {
           ? 'wav'
           : 'webm'
 
-    // The server rejects request bodies over 4.5 MB before our code ever runs,
-    // so catch it here where we can explain what happened.
-    const sizeMb = audioBlob.size / (1024 * 1024)
-    if (sizeMb > 4.2) {
+    // Segments are closed at 3.5 MB, so this should never fire — it guards
+    // against recordings made before segmentation existed.
+    const partMb = audioBlob.size / (1024 * 1024)
+    if (partMb > 4.2) {
       throw new Error(
-        `This recording is ${sizeMb.toFixed(1)} MB, over the 4.5 MB upload limit ` +
-        `(roughly 9 minutes of audio). Please record a shorter session.`
+        `This recording is ${partMb.toFixed(1)} MB, over the 4.5 MB upload limit. ` +
+        `Please record it again — long sessions are now split automatically.`
       )
     }
 
@@ -162,15 +160,18 @@ function UploadPageContent() {
     try {
       // Step 1: Get recording from IndexedDB
       setProgress('Retrieving recording...')
-      const sessionKey = `session_${sessionMeta.date}_${sessionMeta.topic}`
-      const audioBlob = await getRecordingFromIndexedDB(sessionKey)
+      const segments = await loadSegments(sessionKey(sessionMeta.date, sessionMeta.topic))
 
-      if (!audioBlob) {
+      if (segments.length === 0) {
         throw new Error('No recording found. Please record audio first.')
       }
 
-      // Step 2: Transcribe audio using Whisper
-      const transcript = await transcribeAudio(audioBlob)
+      // Step 2: Transcribe every part and join the text
+      const transcript = await transcribeAll(segments)
+
+      if (!transcript.trim()) {
+        throw new Error('No speech was detected in the recording. Please record again.')
+      }
 
       // Step 3: Generate questions using GPT-4
       const questions = await generateQuestions(transcript)
@@ -274,12 +275,8 @@ function UploadPageContent() {
           <p className="text-green-900">
             ✓ <strong>Recording found</strong> on your device ({sessionMeta.topic})
             {sizeMb !== null && ` — ${sizeMb.toFixed(1)} MB`}
+            {partCount > 1 && ` in ${partCount} parts`}
           </p>
-          {sizeMb !== null && sizeMb > 4.2 && (
-            <p className="text-sm text-red-700 mt-2">
-              This exceeds the 4.5 MB upload limit. Please record a shorter session.
-            </p>
-          )}
           <p className="text-sm text-green-700 mt-2">
             Your recording will be transcribed and AI will generate 10 quiz questions based on the content.
           </p>

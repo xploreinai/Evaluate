@@ -3,20 +3,21 @@
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { RequireAuth } from '@/lib/useAuth'
+import { sessionKey, saveSegment, saveSegmentCount } from '@/lib/recordings'
 
-type Status = 'idle' | 'requesting' | 'recording' | 'stopped' | 'error'
+type Status = 'idle' | 'requesting' | 'recording' | 'saving' | 'stopped' | 'error'
 
-// Browsers default to roughly 128 kbps, which is far more than speech needs and
-// burns through the 4.5 MB upload limit in about four minutes. Opus at 24 kbps
-// mono stays clear enough for transcription and is around five times smaller,
-// which is what makes a 20-minute session possible at all.
+// Browsers default to roughly 128 kbps, far more than speech needs, which would
+// exhaust the upload budget in about four minutes. Opus at 24 kbps mono stays
+// clear enough for transcription at roughly a fifth of the size.
 const AUDIO_BITS_PER_SECOND = 24000
 
-// The server rejects request bodies above 4.5 MB, so stop a little short of it.
-const UPLOAD_LIMIT_BYTES = 4.2 * 1024 * 1024
+// Each segment is uploaded on its own and the server refuses bodies above
+// 4.5 MB, so a segment is closed well before that.
+const SEGMENT_LIMIT_BYTES = 3.5 * 1024 * 1024
 
-// Browsers disagree on what MediaRecorder can produce. Pick the first
-// supported type rather than assuming — Chrome gives WebM/Opus, Safari MP4.
+// Browsers disagree on what MediaRecorder can produce. Pick the first supported
+// type rather than assuming — Chrome gives WebM/Opus, Safari MP4.
 function pickMimeType(): string | undefined {
   const candidates = [
     'audio/webm;codecs=opus',
@@ -27,6 +28,8 @@ function pickMimeType(): string | undefined {
   if (typeof MediaRecorder === 'undefined') return undefined
   return candidates.find((t) => MediaRecorder.isTypeSupported(t))
 }
+
+const pad = (n: number) => String(n).padStart(2, '0')
 
 function RecordingPageContent() {
   const router = useRouter()
@@ -42,43 +45,97 @@ function RecordingPageContent() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
-  const [recordingSize, setRecordingSize] = useState(0)
-  const [liveBytes, setLiveBytes] = useState(0)
+  const [totalBytes, setTotalBytes] = useState(0)
+  const [segmentCount, setSegmentCount] = useState(0)
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  const saveRecording = useCallback(
-    (blob: Blob) =>
-      new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('EvaluateDB', 1)
-        request.onupgradeneeded = (e) => {
-          const db = (e.target as IDBOpenDBRequest).result
-          if (!db.objectStoreNames.contains('recordings')) {
-            db.createObjectStore('recordings')
-          }
-        }
-        request.onsuccess = () => {
-          const db = request.result
-          const tx = db.transaction(['recordings'], 'readwrite')
-          tx.objectStore('recordings').put(blob, `session_${date}_${topic}`)
-          // Resolve on transaction completion, not on put() — otherwise the
-          // next page can read before the write has actually landed.
-          tx.oncomplete = () => resolve()
-          tx.onerror = () => reject(tx.error)
-        }
-        request.onerror = () => reject(request.error)
-      }),
-    [date, topic]
-  )
+  // Logic below runs inside recorder callbacks, where React state would be a
+  // stale closure — these refs are the live values.
+  const segIndexRef = useRef(0)          // next segment number to write
+  const completedBytesRef = useRef(0)    // bytes already written to storage
+  const rotatingRef = useRef(false)      // stopping to start a new segment?
+  const finishingRef = useRef(false)     // stopping for good?
 
-  const stopRecording = useCallback(() => {
-    const recorder = mediaRecorderRef.current
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.stop()
-    }
-  }, [])
+  const base = sessionKey(date, topic)
+
+  const startSegment = useCallback(
+    (stream: MediaStream) => {
+      const mimeType = pickMimeType()
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+      })
+      chunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size === 0) return
+        chunksRef.current.push(e.data)
+
+        const current = chunksRef.current.reduce((sum, c) => sum + c.size, 0)
+        setTotalBytes(completedBytesRef.current + current)
+
+        // Close this segment and open the next one. The recording continues;
+        // only the file boundary moves.
+        if (current >= SEGMENT_LIMIT_BYTES && !rotatingRef.current && !finishingRef.current) {
+          rotatingRef.current = true
+          recorder.stop()
+        }
+      }
+
+      recorder.onerror = () => {
+        setError('Recording stopped unexpectedly. Anything recorded so far has been saved.')
+        setStatus('error')
+      }
+
+      recorder.onstop = async () => {
+        const type = recorder.mimeType || mimeType || 'audio/webm'
+        const blob = new Blob(chunksRef.current, { type })
+        chunksRef.current = []
+
+        try {
+          if (blob.size > 0) {
+            await saveSegment(base, segIndexRef.current, blob)
+            segIndexRef.current += 1
+            completedBytesRef.current += blob.size
+            setSegmentCount(segIndexRef.current)
+            setTotalBytes(completedBytesRef.current)
+          }
+
+          if (rotatingRef.current) {
+            // Mid-session: immediately begin the next file.
+            rotatingRef.current = false
+            const live = streamRef.current
+            if (live) startSegment(live)
+            return
+          }
+
+          // Finished: record how many parts there are, then release the mic.
+          await saveSegmentCount(base, segIndexRef.current)
+          streamRef.current?.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+
+          if (segIndexRef.current === 0) {
+            setError('No audio was captured. Check that the right microphone is selected.')
+            setStatus('error')
+          } else {
+            setStatus('stopped')
+          }
+        } catch {
+          setError('Could not save the recording to this device.')
+          setStatus('error')
+        }
+      }
+
+      // A chunk every 5s keeps the size on screen current and gives the
+      // rotation check something to act on.
+      recorder.start(5000)
+      recorderRef.current = recorder
+    },
+    [base]
+  )
 
   async function startRecording() {
     setError(null)
@@ -100,55 +157,15 @@ function RecordingPageContent() {
       })
       streamRef.current = stream
 
-      const mimeType = pickMimeType()
-      const recorder = new MediaRecorder(stream, {
-        ...(mimeType ? { mimeType } : {}),
-        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
-      })
-      chunksRef.current = []
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size === 0) return
-        chunksRef.current.push(e.data)
-        // Chunks arrive every few seconds, so the running total is a real
-        // measurement rather than an estimate from the bitrate.
-        setLiveBytes(chunksRef.current.reduce((sum, c) => sum + c.size, 0))
-      }
-
-      recorder.onerror = () => {
-        setError('Recording stopped unexpectedly. Please try again.')
-        setStatus('error')
-      }
-
-      recorder.onstop = async () => {
-        // Keep the real MIME type: the file extension derived from it is how
-        // the transcription API identifies the audio format.
-        const type = recorder.mimeType || mimeType || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
-        streamRef.current?.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
-
-        if (blob.size === 0) {
-          setError('No audio was captured. Check that the right microphone is selected.')
-          setStatus('error')
-          return
-        }
-
-        try {
-          await saveRecording(blob)
-          setRecordingSize(Math.round(blob.size / 1024))
-          setStatus('stopped')
-        } catch {
-          setError('Could not save the recording to this device.')
-          setStatus('error')
-        }
-      }
-
-      // Emit a chunk every 5s so the size on screen stays current.
-      recorder.start(5000)
-      mediaRecorderRef.current = recorder
+      segIndexRef.current = 0
+      completedBytesRef.current = 0
+      rotatingRef.current = false
+      finishingRef.current = false
+      setSegmentCount(0)
+      setTotalBytes(0)
       setElapsed(0)
-      setLiveBytes(0)
+
+      startSegment(stream)
       setStatus('recording')
     } catch (err: unknown) {
       const name = err instanceof Error ? err.name : ''
@@ -166,6 +183,16 @@ function RecordingPageContent() {
     }
   }
 
+  const stopRecording = useCallback(() => {
+    const recorder = recorderRef.current
+    if (recorder && recorder.state !== 'inactive') {
+      finishingRef.current = true
+      rotatingRef.current = false
+      setStatus('saving')
+      recorder.stop()
+    }
+  }, [])
+
   // Tick once per second while recording.
   useEffect(() => {
     if (status !== 'recording') return
@@ -173,28 +200,19 @@ function RecordingPageContent() {
     return () => clearInterval(id)
   }, [status])
 
-  // Auto-stop when the planned duration is reached.
+  // Stop when the planned duration is reached.
   useEffect(() => {
-    if (status === 'recording' && elapsed >= totalSeconds) {
-      stopRecording()
-    }
+    if (status === 'recording' && elapsed >= totalSeconds) stopRecording()
   }, [elapsed, status, totalSeconds, stopRecording])
-
-  // Stop before the upload limit is breached. Ending early keeps everything
-  // recorded so far; running past it would make the whole session unusable.
-  useEffect(() => {
-    if (status === 'recording' && liveBytes >= UPLOAD_LIMIT_BYTES) {
-      setError(
-        'Recording stopped at the maximum size for one upload. Everything recorded so far has been saved.'
-      )
-      stopRecording()
-    }
-  }, [liveBytes, status, stopRecording])
 
   // Never leave the microphone open behind us.
   useEffect(() => {
     return () => {
-      mediaRecorderRef.current?.state !== 'inactive' && mediaRecorderRef.current?.stop()
+      const r = recorderRef.current
+      if (r && r.state !== 'inactive') {
+        finishingRef.current = true
+        r.stop()
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
   }, [])
@@ -202,9 +220,11 @@ function RecordingPageContent() {
   function recordAgain() {
     setStatus('idle')
     setElapsed(0)
-    setRecordingSize(0)
-    setLiveBytes(0)
+    setTotalBytes(0)
+    setSegmentCount(0)
     setError(null)
+    segIndexRef.current = 0
+    completedBytesRef.current = 0
     chunksRef.current = []
   }
 
@@ -220,9 +240,8 @@ function RecordingPageContent() {
   }
 
   const remaining = Math.max(0, totalSeconds - elapsed)
-  const mm = pad(Math.floor(remaining / 60))
-  const ss = pad(remaining % 60)
   const isRecording = status === 'recording'
+  const mb = (totalBytes / 1024 / 1024).toFixed(1)
 
   if (!date || !topic) {
     return (
@@ -254,40 +273,26 @@ function RecordingPageContent() {
         <p className="text-gray-600 mb-6 text-sm font-medium">
           {isRecording
             ? 'Recording in progress'
-            : status === 'stopped'
-              ? 'Recording complete'
-              : status === 'requesting'
-                ? 'Waiting for microphone permission…'
-                : 'Ready to record'}
+            : status === 'saving'
+              ? 'Saving…'
+              : status === 'stopped'
+                ? 'Recording complete'
+                : status === 'requesting'
+                  ? 'Waiting for microphone permission…'
+                  : 'Ready to record'}
         </p>
         <div className="text-7xl font-bold text-gray-900 font-mono mb-2 tracking-tight">
-          {mm}:{ss}
+          {pad(Math.floor(remaining / 60))}:{pad(remaining % 60)}
         </div>
         <p className="text-gray-600 text-sm">
           {isRecording
-            ? `${pad(Math.floor(elapsed / 60))}:${pad(elapsed % 60)} recorded`
+            ? `${pad(Math.floor(elapsed / 60))}:${pad(elapsed % 60)} recorded • ${mb} MB`
             : `${durationMinutes} minute limit`}
         </p>
-
-        {isRecording && liveBytes > 0 && (
-          <div className="mt-6">
-            <div className="h-1.5 bg-white/60 rounded-full overflow-hidden max-w-xs mx-auto">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  liveBytes / UPLOAD_LIMIT_BYTES > 0.85 ? 'bg-amber-500' : 'bg-blue-500'
-                }`}
-                style={{
-                  width: `${Math.min(100, (liveBytes / UPLOAD_LIMIT_BYTES) * 100)}%`,
-                }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {(liveBytes / 1024 / 1024).toFixed(1)} MB of 4.2 MB used
-            </p>
-          </div>
-        )}
-        {status === 'stopped' && remaining === 0 && (
-          <p className="text-blue-600 font-semibold mt-4">Time is up</p>
+        {isRecording && segmentCount > 0 && (
+          <p className="text-xs text-gray-500 mt-2">
+            Saved in {segmentCount + 1} parts — this happens automatically on long sessions
+          </p>
         )}
       </div>
 
@@ -307,12 +312,12 @@ function RecordingPageContent() {
           </button>
         )}
 
-        {status === 'requesting' && (
+        {(status === 'requesting' || status === 'saving') && (
           <button
             disabled
             className="w-full bg-gray-400 text-white font-semibold py-3.5 rounded-xl text-base"
           >
-            Requesting microphone…
+            {status === 'requesting' ? 'Requesting microphone…' : 'Saving recording…'}
           </button>
         )}
 
@@ -346,41 +351,31 @@ function RecordingPageContent() {
         )}
       </div>
 
-      {recordingSize > 0 && (
+      {status === 'stopped' && totalBytes > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
           <p className="text-sm text-green-900">
-            <strong>Recording saved:</strong> {recordingSize} KB stored on this device
+            <strong>Recording saved:</strong> {mb} MB on this device
+            {segmentCount > 1 && ` in ${segmentCount} parts`}
           </p>
         </div>
       )}
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <p className="text-sm text-blue-900">
-          Your recording is stored on this device only. Your browser will ask for microphone
-          permission the first time you press start.
+          Your recording is stored on this device only. Long sessions are split into parts
+          automatically, so there is no limit on how long you record.
         </p>
       </div>
     </div>
   )
 }
 
-function pad(n: number) {
-  return String(n).padStart(2, '0')
-}
-
-function RecordingPageInner() {
-  return (
-    <Suspense fallback={<div className="text-center py-10">Loading…</div>}>
-      <RecordingPageContent />
-    </Suspense>
-  )
-}
-
-
 export default function RecordingPage() {
   return (
     <RequireAuth>
-      <RecordingPageInner />
+      <Suspense fallback={<div className="text-center py-10">Loading…</div>}>
+        <RecordingPageContent />
+      </Suspense>
     </RequireAuth>
   )
 }

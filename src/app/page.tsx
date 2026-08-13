@@ -151,12 +151,12 @@ function HomePageInner() {
             onChange={(e) => handleDurationChange(Number(e.target.value))}
             className={inputClass}
           >
-            {[5, 10, 15, 20].map((m) => (
+            {[5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
               <option key={m} value={m}>
                 {m} minutes
               </option>
             ))}
-            {![5, 10, 15, 20].includes(duration) && (
+            {![5, 10, 15, 20, 30, 45, 60, 90].includes(duration) && (
               <option value={duration}>{duration} minutes</option>
             )}
           </select>
@@ -206,7 +206,7 @@ function HomePageInner() {
         <h3 className="font-semibold text-blue-900 mb-2">How it works</h3>
         <ol className="text-sm text-blue-800 space-y-1">
           <li>1. Fill in the session details above</li>
-          <li>2. Record your training audio — it stays on this device</li>
+          <li>2. Record your training audio — any length, and it stays on this device</li>
           <li>3. AI transcribes it and writes 10 quiz questions</li>
           <li>4. Review, edit, and publish the quiz</li>
         </ol>
