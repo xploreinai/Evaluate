@@ -3,148 +3,151 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function LandingPage() {
+export default function HomePage() {
   const router = useRouter()
-  const [date, setDate] = useState(today())
-  const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('10:00')
-  const [topic, setTopic] = useState('')
-  const [duration, setDuration] = useState('20')
+  const [formData, setFormData] = useState({
+    topic: '',
+    date: new Date().toISOString().split('T')[0],
+    startTime: '09:00',
+    endTime: '10:00',
+    duration: '20',
+  })
 
-  function handleStart(e: React.FormEvent) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!date || !startTime || !endTime || !topic || !duration) return
 
-    // Encode session metadata in URL params for the recording page
+    if (!formData.topic.trim()) {
+      alert('Please enter a topic')
+      return
+    }
+
     const params = new URLSearchParams({
-      date,
-      startTime,
-      endTime,
-      topic,
-      duration,
+      topic: formData.topic,
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      duration: formData.duration,
     })
 
     router.push(`/recording?${params.toString()}`)
   }
 
   return (
-    <div>
-      {/* Page heading */}
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">
-        Start a training session
-      </h2>
-      <p className="text-gray-500 mb-8">
-        Set your training details and duration, then record to generate quiz questions.
+    <div className="max-w-2xl">
+      {/* Page header */}
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">Create a Training Session</h1>
+      <p className="text-gray-600 mb-8">
+        Start a new training session. Record audio, and AI will automatically generate quiz questions.
       </p>
 
-      <form onSubmit={handleStart} className="space-y-6">
-
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Topic */}
-        <Field label="Training topic" required>
+        <div>
+          <label htmlFor="topic" className="block text-sm font-semibold text-gray-900 mb-2">
+            Topic
+          </label>
           <input
             type="text"
-            value={topic}
-            onChange={e => setTopic(e.target.value)}
-            placeholder="e.g. Fire Safety Induction"
-            required
-            className={inputClass}
+            id="topic"
+            name="topic"
+            value={formData.topic}
+            onChange={handleChange}
+            placeholder="e.g., Machine Learning Basics, Sales Training"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
-        </Field>
+        </div>
 
-        {/* Session date */}
-        <Field label="Date" required>
+        {/* Date */}
+        <div>
+          <label htmlFor="date" className="block text-sm font-semibold text-gray-900 mb-2">
+            Date
+          </label>
           <input
             type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            required
-            className={inputClass}
+            id="date"
+            name="date"
+            value={formData.date}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
-        </Field>
+        </div>
 
-        {/* Time range */}
+        {/* Time Range */}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Start time" required>
+          <div>
+            <label htmlFor="startTime" className="block text-sm font-semibold text-gray-900 mb-2">
+              Start Time
+            </label>
             <input
               type="time"
-              value={startTime}
-              onChange={e => setStartTime(e.target.value)}
-              required
-              className={inputClass}
+              id="startTime"
+              name="startTime"
+              value={formData.startTime}
+              onChange={handleChange}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
-          </Field>
-          <Field label="End time" required>
+          </div>
+          <div>
+            <label htmlFor="endTime" className="block text-sm font-semibold text-gray-900 mb-2">
+              End Time
+            </label>
             <input
               type="time"
-              value={endTime}
-              onChange={e => setEndTime(e.target.value)}
-              required
-              className={inputClass}
+              id="endTime"
+              name="endTime"
+              value={formData.endTime}
+              onChange={handleChange}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
-          </Field>
+          </div>
         </div>
 
         {/* Duration */}
-        <Field label="Expected duration" required>
-          <div className="grid grid-cols-3 gap-3">
-            {['15', '20', '30'].map(min => (
-              <button
-                key={min}
-                type="button"
-                onClick={() => setDuration(min)}
-                className={`py-2.5 px-4 rounded-xl font-medium transition-colors ${
-                  duration === min
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {min} min
-              </button>
-            ))}
-          </div>
-        </Field>
+        <div>
+          <label htmlFor="duration" className="block text-sm font-semibold text-gray-900 mb-2">
+            Recording Duration (minutes)
+          </label>
+          <select
+            id="duration"
+            name="duration"
+            value={formData.duration}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          >
+            <option value="10">10 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="20">20 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+          </select>
+        </div>
 
-        {/* Submit */}
+        {/* Submit button */}
         <button
           type="submit"
-          disabled={!date || !startTime || !endTime || !topic || !duration}
-          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
+          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base"
         >
-          Start recording →
+          🎙️ Start Recording
         </button>
-
       </form>
+
+      {/* Info box */}
+      <div className="mt-12 bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <h3 className="font-semibold text-blue-900 mb-2">How it works:</h3>
+        <ol className="text-sm text-blue-800 space-y-1">
+          <li>✓ Fill in the session details above</li>
+          <li>✓ Record your training audio (stored on your device)</li>
+          <li>✓ AI transcribes and generates 10 quiz questions</li>
+          <li>✓ Review and publish the questions</li>
+        </ol>
+      </div>
     </div>
   )
-}
-
-// ─── Small helper components ──────────────────────────────────────────────────
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-const inputClass =
-  'w-full border border-gray-300 rounded-xl px-4 py-2.5 text-gray-900 ' +
-  'placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ' +
-  'focus:border-transparent transition'
-
-function today() {
-  return new Date().toISOString().split('T')[0]
 }
