@@ -186,8 +186,8 @@ function ResultsPageInner({
   if (error) {
     return (
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Error</h2>
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <h2 className="text-2xl text-ink mb-4">Error</h2>
+        <p className="text-sm text-ink bg-surface-subtle border border-ink rounded-lg px-4 py-3">
           {error}
         </p>
       </div>
@@ -198,7 +198,7 @@ function ResultsPageInner({
     return (
       <div className="text-center py-20">
         <div className="text-4xl mb-4">⏳</div>
-        <h2 className="text-xl font-bold text-gray-900">Loading results…</h2>
+        <h2 className="text-xl text-ink">Loading results…</h2>
       </div>
     )
   }
@@ -208,61 +208,61 @@ function ResultsPageInner({
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">
+      <h2 className="text-2xl text-ink mb-1">
         Results
       </h2>
-      <p className="text-gray-500 mb-8">
+      <p className="text-muted mb-8">
         {session.topic} • {new Date(session.session_date).toLocaleDateString()}
       </p>
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-sm text-gray-500 mb-1">Participants</p>
-          <p className="text-3xl font-bold text-gray-900">{attempts.length}</p>
+        <div className="bg-surface border border-line rounded-xl p-4 text-center">
+          <p className="text-sm text-muted mb-1">Participants</p>
+          <p className="text-3xl font-bold text-ink">{attempts.length}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-sm text-gray-500 mb-1">Passed</p>
-          <p className="text-3xl font-bold text-green-600">{passCount}</p>
+        <div className="bg-surface border border-line rounded-xl p-4 text-center">
+          <p className="text-sm text-muted mb-1">Passed</p>
+          <p className="text-3xl font-bold text-sand-dark">{passCount}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-sm text-gray-500 mb-1">Pass rate</p>
-          <p className="text-3xl font-bold text-gray-900">{passRate}%</p>
+        <div className="bg-surface border border-line rounded-xl p-4 text-center">
+          <p className="text-sm text-muted mb-1">Pass rate</p>
+          <p className="text-3xl font-bold text-ink">{passRate}%</p>
         </div>
       </div>
 
       {/* Results table */}
       {attempts.length > 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8">
+        <div className="bg-surface border border-line rounded-xl overflow-hidden mb-8">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">
+                <tr className="border-b border-line">
+                  <th className="text-left px-6 py-3 text-sm font-semibold text-ink">
                     Participant
                   </th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">
+                  <th className="text-left px-6 py-3 text-sm font-semibold text-ink">
                     Score
                   </th>
-                  <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">
+                  <th className="text-left px-6 py-3 text-sm font-semibold text-ink">
                     Result
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {attempts.map((attempt) => (
-                  <tr key={attempt.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-3 text-sm text-gray-900">{attempt.participant_name}</td>
-                    <td className="px-6 py-3 text-sm text-gray-600">
+                  <tr key={attempt.id} className="border-b border-line hover:bg-surface-subtle">
+                    <td className="px-6 py-3 text-sm text-ink">{attempt.participant_name}</td>
+                    <td className="px-6 py-3 text-sm text-muted">
                       {attempt.score} / 10
                     </td>
                     <td className="px-6 py-3 text-sm">
                       {attempt.passed ? (
-                        <span className="inline-flex items-center gap-2 text-green-600 font-medium">
+                        <span className="inline-flex items-center gap-2 text-sand-dark font-medium">
                           ✓ Pass
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-2 text-red-600 font-medium">
+                        <span className="inline-flex items-center gap-2 text-ink font-medium">
                           ✗ Fail
                         </span>
                       )}
@@ -274,8 +274,8 @@ function ResultsPageInner({
           </div>
         </div>
       ) : (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center mb-8">
-          <p className="text-gray-600">No submissions yet. Participants can scan the QR code to start the quiz.</p>
+        <div className="bg-surface-subtle border border-line rounded-xl p-8 text-center mb-8">
+          <p className="text-muted">No submissions yet. Participants can scan the QR code to start the quiz.</p>
         </div>
       )}
 
@@ -283,7 +283,7 @@ function ResultsPageInner({
       <button
         onClick={exportPDF}
         disabled={isExporting || attempts.length === 0}
-        className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
+        className="w-full btn-primary"
       >
         {isExporting ? 'Exporting…' : 'Export PDF report →'}
       </button>

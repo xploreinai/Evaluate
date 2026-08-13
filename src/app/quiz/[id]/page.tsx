@@ -140,8 +140,8 @@ export default function QuizPage({
   if (error) {
     return (
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Error</h2>
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <h2 className="text-2xl text-ink mb-4">Error</h2>
+        <p className="text-sm text-ink bg-surface-subtle border border-ink rounded-lg px-4 py-3">
           {error}
         </p>
       </div>
@@ -152,7 +152,7 @@ export default function QuizPage({
     return (
       <div className="text-center py-20">
         <div className="text-4xl mb-4">⏳</div>
-        <h2 className="text-xl font-bold text-gray-900">Loading quiz…</h2>
+        <h2 className="text-xl text-ink">Loading quiz…</h2>
       </div>
     )
   }
@@ -161,8 +161,8 @@ export default function QuizPage({
     return (
       <div className="text-center py-20">
         <div className="text-4xl mb-4">⚠️</div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Quiz not available</h2>
-        <p className="text-gray-600">This quiz has no questions yet.</p>
+        <h2 className="text-xl text-ink mb-2">Quiz not available</h2>
+        <p className="text-muted">This quiz has no questions yet.</p>
       </div>
     )
   }
@@ -171,16 +171,16 @@ export default function QuizPage({
   if (!isQuizStarted) {
     return (
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">
+        <h2 className="text-2xl text-ink mb-1">
           {session.topic}
         </h2>
-        <p className="text-gray-500 mb-8">
+        <p className="text-muted mb-8">
           {questions.length} questions • 5 minutes
         </p>
 
         <form onSubmit={handleStartQuiz} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-ink mb-1.5">
               Your name
             </label>
             <input
@@ -190,14 +190,14 @@ export default function QuizPage({
               placeholder="Enter your full name"
               required
               autoFocus
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full border border-line rounded-xl px-4 py-2.5 text-ink placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={!participantName.trim()}
-            className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
+            className="w-full btn-primary"
           >
             Start quiz →
           </button>
@@ -215,14 +215,14 @@ export default function QuizPage({
       {/* Progress bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium text-ink">
             Question {currentQuestionIndex + 1} of {questions.length}
           </p>
-          <p className="text-sm text-gray-500">{Math.round(progress)}%</p>
+          <p className="text-sm text-muted">{Math.round(progress)}%</p>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-surface-subtle rounded h-2">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            className="bg-ink h-2 rounded transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -230,7 +230,7 @@ export default function QuizPage({
 
       {/* Question */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">
+        <h2 className="text-xl text-ink mb-6">
           {currentQuestion.question}
         </h2>
 
@@ -241,13 +241,13 @@ export default function QuizPage({
               key={option.key}
               onClick={() => handleSelectAnswer(option.key)}
               disabled={isSubmitting}
-              className="w-full bg-white border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 rounded-xl px-6 py-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-surface border-2 border-line hover:border-ink hover:bg-surface-subtle rounded-xl px-6 py-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center font-semibold text-gray-700 group-hover:border-blue-500">
+                <div className="w-8 h-8 rounded border-2 border-line flex items-center justify-center font-semibold text-ink group-hover:border-ink">
                   {option.key}
                 </div>
-                <span className="flex-1 text-gray-900 font-medium">{option.text}</span>
+                <span className="flex-1 text-ink font-medium">{option.text}</span>
               </div>
             </button>
           ))}

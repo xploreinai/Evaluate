@@ -246,8 +246,8 @@ function RecordingPageContent() {
   if (!date || !topic) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-600 mb-4">Invalid session. Please go back and start again.</p>
-        <button onClick={() => router.push('/')} className="text-blue-600 font-medium">
+        <p className="text-muted mb-4">Invalid session. Please go back and start again.</p>
+        <button onClick={() => router.push('/')} className="text-ink font-medium">
           ← Back to start
         </button>
       </div>
@@ -256,10 +256,10 @@ function RecordingPageContent() {
 
   return (
     <div>
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8">
-        <p className="text-sm text-gray-500 mb-1">Session</p>
-        <h3 className="text-lg font-semibold text-gray-900">{topic}</h3>
-        <p className="text-sm text-gray-600 mt-3">
+      <div className="bg-surface-subtle border border-line rounded-xl p-6 mb-8">
+        <p className="text-sm text-muted mb-1">Session</p>
+        <h3 className="text-lg text-ink">{topic}</h3>
+        <p className="text-sm text-muted mt-3">
           {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
             weekday: 'long',
             month: 'short',
@@ -269,8 +269,8 @@ function RecordingPageContent() {
         </p>
       </div>
 
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-12 text-center mb-8">
-        <p className="text-gray-600 mb-6 text-sm font-medium">
+      <div className="bg-surface-subtle border border-line rounded-2xl p-12 text-center mb-8">
+        <p className="text-muted mb-6 text-sm font-medium">
           {isRecording
             ? 'Recording in progress'
             : status === 'saving'
@@ -281,24 +281,24 @@ function RecordingPageContent() {
                   ? 'Waiting for microphone permission…'
                   : 'Ready to record'}
         </p>
-        <div className="text-7xl font-bold text-gray-900 font-mono mb-2 tracking-tight">
+        <div className="text-7xl font-bold text-ink font-mono mb-2 tracking-tight">
           {pad(Math.floor(remaining / 60))}:{pad(remaining % 60)}
         </div>
-        <p className="text-gray-600 text-sm">
+        <p className="text-muted text-sm">
           {isRecording
             ? `${pad(Math.floor(elapsed / 60))}:${pad(elapsed % 60)} recorded • ${mb} MB`
             : `${durationMinutes} minute limit`}
         </p>
         {isRecording && segmentCount > 0 && (
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted mt-2">
             Saved in {segmentCount + 1} parts — this happens automatically on long sessions
           </p>
         )}
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-surface-subtle border border-ink rounded-xl p-4 mb-6">
+          <p className="text-sm text-ink">{error}</p>
         </div>
       )}
 
@@ -306,7 +306,7 @@ function RecordingPageContent() {
         {(status === 'idle' || status === 'error') && (
           <button
             onClick={startRecording}
-            className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 transition-colors text-base"
+            className="btn-primary"
           >
             ● Start recording
           </button>
@@ -315,7 +315,7 @@ function RecordingPageContent() {
         {(status === 'requesting' || status === 'saving') && (
           <button
             disabled
-            className="w-full bg-gray-400 text-white font-semibold py-3.5 rounded-xl text-base"
+            className="btn-primary"
           >
             {status === 'requesting' ? 'Requesting microphone…' : 'Saving recording…'}
           </button>
@@ -325,11 +325,11 @@ function RecordingPageContent() {
           <>
             <button
               onClick={stopRecording}
-              className="w-full bg-red-600 text-white font-semibold py-3.5 rounded-xl hover:bg-red-700 transition-colors text-base"
+              className="btn-primary"
             >
               ■ Stop recording
             </button>
-            <p className="text-center text-sm text-red-600 font-medium">Recording is live</p>
+            <p className="text-center text-sm text-ink font-medium">Recording is live</p>
           </>
         )}
 
@@ -337,13 +337,13 @@ function RecordingPageContent() {
           <>
             <button
               onClick={proceedToUpload}
-              className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base"
+              className="w-full btn-primary"
             >
               Generate quiz questions →
             </button>
             <button
               onClick={recordAgain}
-              className="w-full border border-gray-300 text-gray-700 font-semibold py-3.5 rounded-xl hover:bg-gray-50 transition-colors text-base"
+              className="btn-secondary"
             >
               ↻ Record again
             </button>
@@ -352,16 +352,16 @@ function RecordingPageContent() {
       </div>
 
       {status === 'stopped' && totalBytes > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-          <p className="text-sm text-green-900">
+        <div className="bg-sand-light border border-sand rounded-xl p-4 mb-4">
+          <p className="text-sm text-ink">
             <strong>Recording saved:</strong> {mb} MB on this device
             {segmentCount > 1 && ` in ${segmentCount} parts`}
           </p>
         </div>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <p className="text-sm text-blue-900">
+      <div className="bg-surface-subtle border border-line rounded-xl p-4">
+        <p className="text-sm text-ink">
           Your recording is stored on this device only. Long sessions are split into parts
           automatically, so there is no limit on how long you record.
         </p>

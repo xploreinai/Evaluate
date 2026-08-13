@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Playfair_Display } from 'next/font/google'
 import './globals.css'
 import Header from './Header'
 import ServiceWorker from './ServiceWorker'
 
-const inter = Inter({ subsets: ['latin'] })
+// Apple devices have Didot, which is what editionhotels.com uses. Everywhere
+// else falls back to this — the nearest freely available high-contrast serif —
+// so headings keep the same character on Android and Windows.
+const display = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-display',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'E-valuate',
@@ -27,7 +35,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#2563eb',
+  themeColor: '#111111',
   width: 'device-width',
   initialScale: 1,
   // Installed apps should not zoom on input focus, but pinch-zoom must stay
@@ -41,8 +49,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+    <html lang="en" className={display.variable}>
+      <body className="font-sans bg-surface min-h-screen">
 
         <ServiceWorker />
         <Header />

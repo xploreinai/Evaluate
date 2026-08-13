@@ -21,19 +21,19 @@ export default function DonePage({
         )}
       </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <h1 className="text-3xl text-ink mb-2">
         {passed ? 'Great job!' : 'Keep learning'}
       </h1>
 
-      <p className="text-4xl font-bold text-gray-900 mb-8">
+      <p className="text-4xl font-bold text-ink mb-8">
         {score} out of 10
       </p>
 
-      <p className="text-gray-600 text-lg mb-2">
+      <p className="text-muted text-lg mb-2">
         {passed ? '✓ You passed the quiz' : '✗ You did not pass this time'}
       </p>
 
-      <p className="text-gray-500">
+      <p className="text-muted">
         Your trainer has your results.
       </p>
     </div>

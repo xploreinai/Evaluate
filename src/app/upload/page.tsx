@@ -244,40 +244,40 @@ function UploadPageContent() {
   return (
     <div>
       {/* Page heading */}
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">
+      <h2 className="text-2xl text-ink mb-1">
         Process your recording
       </h2>
-      <p className="text-gray-500 mb-8">
+      <p className="text-muted mb-8">
         {sessionMeta.topic} • {new Date(sessionMeta.date).toLocaleDateString()} • {sessionMeta.startTime}–{sessionMeta.endTime}
       </p>
 
       <form onSubmit={handleProcess} className="space-y-6">
         {/* Status message */}
         {status === 'processing' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+          <div className="bg-surface-subtle border border-line rounded-xl p-6 text-center">
             <div className="animate-spin inline-block mb-3">⚙️</div>
-            <p className="font-semibold text-blue-900 mb-1">Processing...</p>
-            <p className="text-sm text-blue-600">{progress}</p>
+            <p className="font-semibold text-ink mb-1">Processing...</p>
+            <p className="text-sm text-ink">{progress}</p>
           </div>
         )}
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <p className="text-sm text-red-600">
+          <div className="bg-surface-subtle border border-ink rounded-xl p-4">
+            <p className="text-sm text-ink">
               <strong>Error:</strong> {error}
             </p>
           </div>
         )}
 
         {/* Info box */}
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-          <p className="text-green-900">
+        <div className="bg-sand-light border border-sand rounded-xl p-6">
+          <p className="text-ink">
             ✓ <strong>Recording found</strong> on your device ({sessionMeta.topic})
             {sizeMb !== null && ` — ${sizeMb.toFixed(1)} MB`}
             {partCount > 1 && ` in ${partCount} parts`}
           </p>
-          <p className="text-sm text-green-700 mt-2">
+          <p className="text-sm text-muted mt-2">
             Your recording will be transcribed and AI will generate 10 quiz questions based on the content.
           </p>
         </div>
@@ -286,7 +286,7 @@ function UploadPageContent() {
         <button
           type="submit"
           disabled={status === 'processing'}
-          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 transition-colors disabled:bg-gray-400 text-base"
+          className="w-full btn-primary"
         >
           {status === 'processing' ? 'Processing...' : '🚀 Generate Quiz Questions'}
         </button>

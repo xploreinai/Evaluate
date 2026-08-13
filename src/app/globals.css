@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-muted;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Headings on editionhotels.com are serif, uppercase, weight 400, with
+     tight negative tracking — never bold. */
+  h1, h2, h3 {
+    @apply font-display uppercase text-ink;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Small uppercase label above a field or section — a recurring device on
+     the hotel site. */
+  .eyebrow {
+    @apply text-[11px] uppercase tracking-wide text-muted font-medium;
+  }
+
+  .btn-primary {
+    @apply w-full bg-ink text-white uppercase tracking-wide text-xs font-medium
+           py-4 transition-colors hover:bg-black
+           disabled:bg-line disabled:text-muted disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply w-full bg-transparent text-ink border border-ink uppercase tracking-wide
+           text-xs font-medium py-4 transition-colors hover:bg-ink hover:text-white
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply bg-ink text-white uppercase tracking-wide text-xs font-medium px-5 py-3
+           transition-colors hover:bg-black disabled:bg-line disabled:text-muted;
+  }
+
+  .card {
+    @apply bg-surface border border-line;
+  }
+
+  .field {
+    @apply w-full px-4 py-3 bg-surface border border-line text-ink
+           focus:border-ink focus:ring-0 outline-none transition-colors;
+  }
+}

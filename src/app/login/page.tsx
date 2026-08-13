@@ -83,34 +83,34 @@ export default function LoginPage() {
   }
 
   const inputClass =
-    'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none'
+    'w-full px-4 py-2.5 border border-line rounded-lg focus:ring-2 focus:ring-ink focus:border-transparent outline-none'
 
   return (
     <div className="max-w-md">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <h1 className="text-3xl text-ink mb-2">
         {mode === 'login' ? 'Trainer sign in' : 'Create a trainer account'}
       </h1>
-      <p className="text-gray-600 mb-8">
+      <p className="text-muted mb-8">
         {mode === 'login'
           ? 'Sign in to record sessions and manage your quizzes.'
           : 'Set up an account to record sessions and build quizzes.'}
       </p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-surface-subtle border border-ink rounded-xl p-4 mb-6">
+          <p className="text-sm text-ink">{error}</p>
         </div>
       )}
       {notice && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-blue-800">{notice}</p>
+        <div className="bg-surface-subtle border border-line rounded-xl p-4 mb-6">
+          <p className="text-sm text-muted">{notice}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {mode === 'signup' && (
           <div>
-            <label htmlFor="fullName" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="fullName" className="block text-sm font-semibold text-ink mb-2">
               Your name
             </label>
             <input
@@ -125,7 +125,7 @@ export default function LoginPage() {
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
+          <label htmlFor="email" className="block text-sm font-semibold text-ink mb-2">
             Email
           </label>
           <input
@@ -139,7 +139,7 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
+          <label htmlFor="password" className="block text-sm font-semibold text-ink mb-2">
             Password
           </label>
           <input
@@ -151,20 +151,20 @@ export default function LoginPage() {
             className={inputClass}
           />
           {mode === 'signup' && (
-            <p className="text-xs text-gray-500 mt-1.5">At least 6 characters.</p>
+            <p className="text-xs text-muted mt-1.5">At least 6 characters.</p>
           )}
         </div>
 
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 disabled:bg-gray-400 transition-colors text-base"
+          className="btn-primary"
         >
           {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
       </form>
 
-      <p className="text-sm text-gray-600 mt-6">
+      <p className="text-sm text-muted mt-6">
         {mode === 'login' ? "Don't have an account yet? " : 'Already have an account? '}
         <button
           onClick={() => {
@@ -172,7 +172,7 @@ export default function LoginPage() {
             setError(null)
             setNotice(null)
           }}
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-ink hover:text-sand-dark font-medium"
         >
           {mode === 'login' ? 'Create one' : 'Sign in'}
         </button>

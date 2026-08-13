@@ -75,8 +75,8 @@ function SharePageInner({
   if (error) {
     return (
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Error</h2>
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <h2 className="text-2xl text-ink mb-4">Error</h2>
+        <p className="text-sm text-ink bg-surface-subtle border border-ink rounded-lg px-4 py-3">
           {error}
         </p>
       </div>
@@ -87,7 +87,7 @@ function SharePageInner({
     return (
       <div className="text-center py-20">
         <div className="text-4xl mb-4">⏳</div>
-        <h2 className="text-xl font-bold text-gray-900">Loading…</h2>
+        <h2 className="text-xl text-ink">Loading…</h2>
       </div>
     )
   }
@@ -96,18 +96,18 @@ function SharePageInner({
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">
+      <h2 className="text-2xl text-ink mb-1">
         Your quiz is live
       </h2>
-      <p className="text-gray-500 mb-8">
+      <p className="text-muted mb-8">
         Share this QR code and link with staff to start the quiz.
       </p>
 
       {/* Session info */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8">
-        <p className="text-sm text-gray-500 mb-1">Session</p>
-        <h3 className="text-lg font-semibold text-gray-900">{session.topic}</h3>
-        <p className="text-sm text-gray-600 mt-3">
+      <div className="bg-surface-subtle border border-line rounded-xl p-6 mb-8">
+        <p className="text-sm text-muted mb-1">Session</p>
+        <h3 className="text-lg text-ink">{session.topic}</h3>
+        <p className="text-sm text-muted mt-3">
           {new Date(session.session_date).toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
@@ -118,8 +118,8 @@ function SharePageInner({
       </div>
 
       {/* QR Code section */}
-      <div className="bg-white border border-gray-200 rounded-xl p-8 text-center mb-8">
-        <p className="text-sm font-medium text-gray-700 mb-6">Scan with a phone camera</p>
+      <div className="bg-surface border border-line rounded-xl p-8 text-center mb-8">
+        <p className="text-sm font-medium text-ink mb-6">Scan with a phone camera</p>
         <div className="flex justify-center mb-6">
           <QRCodeCanvas
             value={quizUrl}
@@ -128,7 +128,7 @@ function SharePageInner({
             marginSize={4}
           />
         </div>
-        <p className="text-sm text-gray-500 mb-6">Or share this link</p>
+        <p className="text-sm text-muted mb-6">Or share this link</p>
 
         {/* Copyable link */}
         <div className="flex items-center gap-2 mb-4">
@@ -136,11 +136,11 @@ function SharePageInner({
             type="text"
             value={quizUrl}
             readOnly
-            className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-900 bg-gray-50 cursor-text"
+            className="flex-1 border border-line rounded-lg px-4 py-2.5 text-sm text-ink bg-surface-subtle cursor-text"
           />
           <button
             onClick={copyToClipboard}
-            className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
+            className="px-4 py-2.5 bg-surface-subtle hover:bg-surface-subtle text-ink font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
           >
             {copied ? '✓ Copied' : 'Copy link'}
           </button>
@@ -151,14 +151,14 @@ function SharePageInner({
       <div className="space-y-3">
         <button
           onClick={() => router.push(`/session/${params.id}/results`)}
-          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base"
+          className="w-full btn-primary"
         >
           View results →
         </button>
         <button
           onClick={closeQuiz}
           disabled={isClosing}
-          className="w-full border border-gray-300 text-gray-700 font-semibold py-3.5 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base"
+          className="btn-secondary"
         >
           {isClosing ? 'Closing…' : 'Close quiz'}
         </button>

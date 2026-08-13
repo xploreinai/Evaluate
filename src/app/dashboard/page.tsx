@@ -8,9 +8,9 @@ import { sessionKey, deleteRecording } from '@/lib/recordings'
 import type { Session } from '@/types'
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-amber-50 text-amber-700 border-amber-200',
-  published: 'bg-green-50 text-green-700 border-green-200',
-  closed: 'bg-gray-100 text-gray-600 border-gray-200',
+  draft: 'bg-sand-light text-sand-dark border-sand',
+  published: 'bg-sand-light text-muted border-sand',
+  closed: 'bg-surface-subtle text-muted border-line',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -84,34 +84,34 @@ function DashboardContent() {
     <div>
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Your sessions</h1>
-          <p className="text-gray-600 text-sm">{user?.email}</p>
+          <h1 className="text-3xl text-ink mb-1">Your sessions</h1>
+          <p className="text-muted text-sm">{user?.email}</p>
         </div>
         <button
           onClick={() => router.push('/')}
-          className="bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
+          className="bg-ink text-white uppercase tracking-wide text-xs font-medium px-5 py-3 hover:bg-black transition-colors whitespace-nowrap"
         >
           + New session
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-surface-subtle border border-ink rounded-xl p-4 mb-6">
+          <p className="text-sm text-ink">{error}</p>
         </div>
       )}
 
       {loading ? (
-        <p className="text-gray-500 py-10 text-center">Loading your sessions…</p>
+        <p className="text-muted py-10 text-center">Loading your sessions…</p>
       ) : sessions.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
-          <h2 className="font-semibold text-gray-900 mb-2">No sessions yet</h2>
-          <p className="text-gray-600 text-sm mb-6">
+        <div className="bg-surface border border-line rounded-xl p-10 text-center">
+          <h2 className="text-ink mb-2">No sessions yet</h2>
+          <p className="text-muted text-sm mb-6">
             Record your first training session and AI will draft the quiz questions for you.
           </p>
           <button
             onClick={() => router.push('/')}
-            className="bg-blue-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors text-sm"
+            className="bg-ink text-white uppercase tracking-wide text-xs font-medium px-6 py-3 hover:bg-black transition-colors"
           >
             Record a session
           </button>
@@ -121,15 +121,15 @@ function DashboardContent() {
           {sessions.map((s) => (
             <div
               key={s.id}
-              className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-blue-400 transition-colors"
+              className="bg-surface border border-line rounded-xl overflow-hidden hover:border-ink transition-colors"
             >
               <div className="flex items-start gap-3 p-5">
                 <button
                   onClick={() => router.push(destinationFor(s))}
                   className="flex-1 text-left min-w-0"
                 >
-                  <h3 className="font-semibold text-gray-900 truncate">{s.topic}</h3>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <h3 className="text-ink truncate">{s.topic}</h3>
+                  <p className="text-sm text-muted mt-1">
                     {new Date(`${s.session_date}T00:00:00`).toLocaleDateString(undefined, {
                       weekday: 'short',
                       day: 'numeric',
@@ -144,7 +144,7 @@ function DashboardContent() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap ${
+                    className={`text-xs font-medium px-2.5 py-1 rounded border whitespace-nowrap ${
                       STATUS_STYLES[s.status] || STATUS_STYLES.closed
                     }`}
                   >
@@ -153,7 +153,7 @@ function DashboardContent() {
                   <button
                     onClick={() => setConfirmingId(confirmingId === s.id ? null : s.id)}
                     aria-label={`Delete ${s.topic}`}
-                    className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 transition-colors"
+                    className="text-muted hover:text-ink hover:bg-surface-subtle rounded-lg px-2 py-1 transition-colors"
                   >
                     🗑
                   </button>
@@ -161,8 +161,8 @@ function DashboardContent() {
               </div>
 
               {confirmingId === s.id && (
-                <div className="border-t border-gray-200 bg-red-50 px-5 py-4">
-                  <p className="text-sm text-red-900 mb-3">
+                <div className="border-t border-line bg-surface-subtle px-5 py-4">
+                  <p className="text-sm text-ink mb-3">
                     Delete <strong>{s.topic}</strong>? Its questions
                     {s.status !== 'draft' && ' and every quiz result staff have submitted'} will be
                     removed too. This cannot be undone.
@@ -171,14 +171,14 @@ function DashboardContent() {
                     <button
                       onClick={() => remove(s)}
                       disabled={deletingId === s.id}
-                      className="bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors"
+                      className="btn-danger"
                     >
                       {deletingId === s.id ? 'Deleting…' : 'Delete permanently'}
                     </button>
                     <button
                       onClick={() => setConfirmingId(null)}
                       disabled={deletingId === s.id}
-                      className="border border-gray-300 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white transition-colors"
+                      className="border border-ink text-ink uppercase tracking-wide text-xs font-medium px-5 py-3 hover:bg-ink hover:text-white transition-colors"
                     >
                       Cancel
                     </button>

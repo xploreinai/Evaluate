@@ -91,22 +91,22 @@ function HomePageInner() {
   }
 
   if (!mounted) {
-    return <div className="text-center py-20 text-gray-500">Loading…</div>
+    return <div className="text-center py-20 text-muted">Loading…</div>
   }
 
   const inputClass =
-    'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none'
+    'w-full px-4 py-2.5 border border-line rounded-lg focus:ring-2 focus:ring-ink focus:border-transparent outline-none'
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Create a Training Session</h1>
-      <p className="text-gray-600 mb-8">
+      <h1 className="text-3xl text-ink mb-2">Create a Training Session</h1>
+      <p className="text-muted mb-8">
         Record your session and AI will generate quiz questions from what was said.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="topic" className="block text-sm font-semibold text-gray-900 mb-2">
+          <label htmlFor="topic" className="block text-sm font-semibold text-ink mb-2">
             Topic
           </label>
           <input
@@ -121,13 +121,13 @@ function HomePageInner() {
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label htmlFor="date" className="block text-sm font-semibold text-gray-900">
+            <label htmlFor="date" className="block text-sm font-semibold text-ink">
               Date
             </label>
             <button
               type="button"
               onClick={resetToNow}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-ink hover:text-sand-dark font-medium"
             >
               Reset to now
             </button>
@@ -142,7 +142,7 @@ function HomePageInner() {
         </div>
 
         <div>
-          <label htmlFor="duration" className="block text-sm font-semibold text-gray-900 mb-2">
+          <label htmlFor="duration" className="block text-sm font-semibold text-ink mb-2">
             Recording duration
           </label>
           <select
@@ -164,7 +164,7 @@ function HomePageInner() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="startTime" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="startTime" className="block text-sm font-semibold text-ink mb-2">
               Start time
             </label>
             <input
@@ -176,7 +176,7 @@ function HomePageInner() {
             />
           </div>
           <div>
-            <label htmlFor="endTime" className="block text-sm font-semibold text-gray-900 mb-2">
+            <label htmlFor="endTime" className="block text-sm font-semibold text-ink mb-2">
               End time
             </label>
             <input
@@ -189,22 +189,22 @@ function HomePageInner() {
           </div>
         </div>
 
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted">
           Times default to your device clock. Change the duration and the end time follows; edit the
           end time directly and the duration updates to match.
         </p>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl hover:bg-blue-700 transition-colors text-base"
+          className="w-full btn-primary"
         >
           Continue to recording →
         </button>
       </form>
 
-      <div className="mt-12 bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h3 className="font-semibold text-blue-900 mb-2">How it works</h3>
-        <ol className="text-sm text-blue-800 space-y-1">
+      <div className="mt-12 bg-surface-subtle border border-line rounded-xl p-6">
+        <h3 className="text-ink mb-2">How it works</h3>
+        <ol className="text-sm text-muted space-y-1">
           <li>1. Fill in the session details above</li>
           <li>2. Record your training audio — any length, and it stays on this device</li>
           <li>3. AI transcribes it and writes 10 quiz questions</li>
