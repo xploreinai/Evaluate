@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import QRCode from 'qrcode.react'
+import { QRCodeCanvas } from 'qrcode.react'
 import type { Session } from '@/types'
 
 export default function SharePage({
@@ -120,12 +120,11 @@ export default function SharePage({
       <div className="bg-white border border-gray-200 rounded-xl p-8 text-center mb-8">
         <p className="text-sm font-medium text-gray-700 mb-6">Scan with a phone camera</p>
         <div className="flex justify-center mb-6">
-          <QRCode
+          <QRCodeCanvas
             value={quizUrl}
             size={240}
             level="H"
-            includeMargin
-            renderAs="canvas"
+            marginSize={4}
           />
         </div>
         <p className="text-sm text-gray-500 mb-6">Or share this link</p>
