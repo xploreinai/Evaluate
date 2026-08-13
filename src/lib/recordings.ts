@@ -84,6 +84,22 @@ export async function loadSegments(base: string): Promise<Blob[]> {
   return legacy ? [legacy] : []
 }
 
+/** Remove a session's audio from this device. Safe if nothing is stored. */
+export async function deleteRecording(base: string): Promise<void> {
+  const db = await openDb()
+  const count = (await get<number>(`${base}__count`)) ?? 0
+  const keys = [base, `${base}__count`]
+  for (let i = 0; i < count; i++) keys.push(`${base}__${i}`)
+
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([STORE], 'readwrite')
+    const store = tx.objectStore(STORE)
+    keys.forEach((k) => store.delete(k))
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 export async function totalSize(base: string): Promise<number> {
   const segments = await loadSegments(base)
   return segments.reduce((sum, b) => sum + b.size, 0)

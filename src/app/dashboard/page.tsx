@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { RequireAuth, useAuth } from '@/lib/useAuth'
+import { sessionKey, deleteRecording } from '@/lib/recordings'
 import type { Session } from '@/types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -24,6 +25,8 @@ function DashboardContent() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase
@@ -42,6 +45,33 @@ function DashboardContent() {
   useEffect(() => {
     load()
   }, [load])
+
+  async function remove(s: Session) {
+    setDeletingId(s.id)
+    setError(null)
+
+    // Questions, attempts and answers all cascade from the session row.
+    const { error: err } = await supabase.from('sessions').delete().eq('id', s.id)
+
+    if (err) {
+      setError(`Could not delete "${s.topic}": ${err.message}`)
+      setDeletingId(null)
+      setConfirmingId(null)
+      return
+    }
+
+    // Free the audio still held on this device. Failure here is not worth
+    // reporting — the session itself is already gone.
+    try {
+      await deleteRecording(sessionKey(s.session_date, s.topic))
+    } catch {
+      /* ignore */
+    }
+
+    setSessions((prev) => prev.filter((x) => x.id !== s.id))
+    setDeletingId(null)
+    setConfirmingId(null)
+  }
 
   // Where a session should take you depends on how far it has got.
   function destinationFor(s: Session) {
@@ -89,13 +119,15 @@ function DashboardContent() {
       ) : (
         <div className="space-y-3">
           {sessions.map((s) => (
-            <button
+            <div
               key={s.id}
-              onClick={() => router.push(destinationFor(s))}
-              className="w-full bg-white border border-gray-200 rounded-xl p-5 text-left hover:border-blue-400 hover:shadow-sm transition-all"
+              className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-blue-400 transition-colors"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
+              <div className="flex items-start gap-3 p-5">
+                <button
+                  onClick={() => router.push(destinationFor(s))}
+                  className="flex-1 text-left min-w-0"
+                >
                   <h3 className="font-semibold text-gray-900 truncate">{s.topic}</h3>
                   <p className="text-sm text-gray-500 mt-1">
                     {new Date(`${s.session_date}T00:00:00`).toLocaleDateString(undefined, {
@@ -106,17 +138,54 @@ function DashboardContent() {
                     })}
                     {s.start_time && ` • ${s.start_time.slice(0, 5)}`}
                     {s.end_time && `–${s.end_time.slice(0, 5)}`}
+                    {s.pass_threshold != null && ` • pass ${s.pass_threshold}%`}
                   </p>
+                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap ${
+                      STATUS_STYLES[s.status] || STATUS_STYLES.closed
+                    }`}
+                  >
+                    {STATUS_LABELS[s.status] || s.status}
+                  </span>
+                  <button
+                    onClick={() => setConfirmingId(confirmingId === s.id ? null : s.id)}
+                    aria-label={`Delete ${s.topic}`}
+                    className="text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 transition-colors"
+                  >
+                    🗑
+                  </button>
                 </div>
-                <span
-                  className={`text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap ${
-                    STATUS_STYLES[s.status] || STATUS_STYLES.closed
-                  }`}
-                >
-                  {STATUS_LABELS[s.status] || s.status}
-                </span>
               </div>
-            </button>
+
+              {confirmingId === s.id && (
+                <div className="border-t border-gray-200 bg-red-50 px-5 py-4">
+                  <p className="text-sm text-red-900 mb-3">
+                    Delete <strong>{s.topic}</strong>? Its questions
+                    {s.status !== 'draft' && ' and every quiz result staff have submitted'} will be
+                    removed too. This cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => remove(s)}
+                      disabled={deletingId === s.id}
+                      className="bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      {deletingId === s.id ? 'Deleting…' : 'Delete permanently'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingId(null)}
+                      disabled={deletingId === s.id}
+                      className="border border-gray-300 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

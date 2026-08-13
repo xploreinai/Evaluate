@@ -93,6 +93,18 @@ function ReviewPageInner({
     }
   }
 
+  async function updatePassThreshold(value: number) {
+    // Update on screen first so the control stays responsive, then persist.
+    setSession((prev) => (prev ? { ...prev, pass_threshold: value } : prev))
+
+    const { error: err } = await supabase
+      .from('sessions')
+      .update({ pass_threshold: value })
+      .eq('id', params.id)
+
+    if (err) setError(`Could not save the pass mark: ${err.message}`)
+  }
+
   async function publishQuiz() {
     if (questions.length < 5) return
 
@@ -172,6 +184,38 @@ function ReviewPageInner({
       </div>
 
       {/* Publish button */}
+      {/* Pass mark */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+        <label htmlFor="passMark" className="block font-semibold text-gray-900 mb-1">
+          Pass mark
+        </label>
+        <p className="text-sm text-gray-500 mb-4">
+          How much of the quiz a participant must get right to pass.
+        </p>
+        <div className="flex items-center gap-3">
+          <select
+            id="passMark"
+            value={session.pass_threshold ?? 70}
+            onChange={(e) => updatePassThreshold(Number(e.target.value))}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          >
+            {[40, 50, 60, 70, 80, 90, 100].map((v) => (
+              <option key={v} value={v}>
+                {v}%
+              </option>
+            ))}
+          </select>
+          <span className="text-sm text-gray-600">
+            {questions.length > 0 && (
+              <>
+                {Math.ceil((questions.length * (session.pass_threshold ?? 70)) / 100)} of{' '}
+                {questions.length} questions correct
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
       <button
         onClick={publishQuiz}
         disabled={questions.length < 5 || isPublishing}
