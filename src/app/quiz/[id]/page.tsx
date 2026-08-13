@@ -92,24 +92,30 @@ export default function QuizPage({
         }
       })
 
-      const passed = correctCount >= (session?.pass_threshold || 70)
+      const passThreshold = session?.pass_threshold ?? 70
+      const passed = questions.length > 0
+        ? (correctCount / questions.length) * 100 >= passThreshold
+        : false
 
-      const { data: attempt, error: attemptError } = await supabase
+      // Participants may write an attempt but not read one back, so the id is
+      // generated here rather than returned by the insert.
+      const attemptId = crypto.randomUUID()
+
+      const { error: attemptError } = await supabase
         .from('quiz_attempts')
         .insert({
+          id: attemptId,
           session_id: params.id,
           participant_name: participantName.trim(),
           score: correctCount,
-          passed: passed,
-          
+          total_questions: questions.length,
+          passed,
         })
-        .select()
-        .single()
 
       if (attemptError) throw attemptError
 
       const answerRows = questions.map(q => ({
-        attempt_id: attempt.id,
+        attempt_id: attemptId,
         question_id: q.id,
         selected: finalAnswers[q.id],
         is_correct: finalAnswers[q.id] === q.correct,

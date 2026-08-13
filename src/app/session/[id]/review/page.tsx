@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { questionOptions, optionColumns } from '@/types'
 import type { Session, Question } from '@/types'
+import { RequireAuth } from '@/lib/useAuth'
 
 
-export default function ReviewPage({
+function ReviewPageInner({
   params,
 }: {
   params: { id: string }
@@ -304,5 +305,14 @@ function QuestionCard({
         ))}
       </div>
     </div>
+  )
+}
+
+
+export default function ReviewPage(props: { params: { id: string } }) {
+  return (
+    <RequireAuth>
+      <ReviewPageInner {...props} />
+    </RequireAuth>
   )
 }

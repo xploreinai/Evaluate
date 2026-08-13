@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { RequireAuth } from '@/lib/useAuth'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -25,7 +26,7 @@ function minutesBetween(start: string, end: string): number {
   return diff
 }
 
-export default function HomePage() {
+function HomePageInner() {
   const router = useRouter()
 
   // Start blank and fill in on mount. Seeding state with the current time
@@ -211,5 +212,14 @@ export default function HomePage() {
         </ol>
       </div>
     </div>
+  )
+}
+
+
+export default function HomePage() {
+  return (
+    <RequireAuth>
+      <HomePageInner />
+    </RequireAuth>
   )
 }

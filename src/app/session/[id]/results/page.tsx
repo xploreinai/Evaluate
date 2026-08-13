@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import jsPDF from 'jspdf'
 import type { Session, QuizAttempt, Answer, Question } from '@/types'
+import { RequireAuth } from '@/lib/useAuth'
 
 
-export default function ResultsPage({
+function ResultsPageInner({
   params,
 }: {
   params: { id: string }
@@ -287,5 +288,14 @@ export default function ResultsPage({
         {isExporting ? 'Exporting…' : 'Export PDF report →'}
       </button>
     </div>
+  )
+}
+
+
+export default function ResultsPage(props: { params: { id: string } }) {
+  return (
+    <RequireAuth>
+      <ResultsPageInner {...props} />
+    </RequireAuth>
   )
 }

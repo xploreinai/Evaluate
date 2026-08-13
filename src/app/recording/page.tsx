@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { RequireAuth } from '@/lib/useAuth'
 
 type Status = 'idle' | 'requesting' | 'recording' | 'stopped' | 'error'
 
@@ -311,10 +312,19 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-export default function RecordingPage() {
+function RecordingPageInner() {
   return (
     <Suspense fallback={<div className="text-center py-10">Loading…</div>}>
       <RecordingPageContent />
     </Suspense>
+  )
+}
+
+
+export default function RecordingPage() {
+  return (
+    <RequireAuth>
+      <RecordingPageInner />
+    </RequireAuth>
   )
 }

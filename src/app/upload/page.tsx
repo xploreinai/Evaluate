@@ -3,9 +3,8 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase, supabaseConfigError } from '@/lib/supabase'
+import { RequireAuth } from '@/lib/useAuth'
 
-// Placeholder IDs (for demo without auth)
-const PLACEHOLDER_TRAINER_ID = '00000000-0000-0000-0000-000000000001'
 
 // Supabase rejects a query with a plain object ({ message, details, hint, code }),
 // not an Error — so `err.message` alone silently loses the reason.
@@ -183,10 +182,18 @@ function UploadPageContent() {
       // Step 4: Create session in Supabase (NO recording file)
       if (supabaseConfigError) throw new Error(supabaseConfigError)
       setProgress('Saving session...')
+
+      // The row is owned by the signed-in trainer; the security policies
+      // require trainer_id to match the authenticated user.
+      const { data: auth } = await supabase.auth.getUser()
+      if (!auth.user) {
+        throw new Error('Your session has expired. Please sign in again.')
+      }
+
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
         .insert({
-          trainer_id: PLACEHOLDER_TRAINER_ID,
+          trainer_id: auth.user.id,
           topic: sessionMeta.topic.trim(),
           session_date: sessionMeta.date,
           start_time: sessionMeta.startTime,
@@ -291,10 +298,19 @@ function UploadPageContent() {
   )
 }
 
-export default function UploadPage() {
+function UploadPageInner() {
   return (
     <Suspense fallback={<div className="text-center py-10">Loading...</div>}>
       <UploadPageContent />
     </Suspense>
+  )
+}
+
+
+export default function UploadPage() {
+  return (
+    <RequireAuth>
+      <UploadPageInner />
+    </RequireAuth>
   )
 }

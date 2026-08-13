@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Session } from '@/types'
+import { RequireAuth } from '@/lib/useAuth'
 
-export default function SharePage({
+function SharePageInner({
   params,
 }: {
   params: { id: string }
@@ -163,5 +164,14 @@ export default function SharePage({
         </button>
       </div>
     </div>
+  )
+}
+
+
+export default function SharePage(props: { params: { id: string } }) {
+  return (
+    <RequireAuth>
+      <SharePageInner {...props} />
+    </RequireAuth>
   )
 }
