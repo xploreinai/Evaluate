@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseConfigError } from '@/lib/supabase'
 
 // Placeholder IDs (for demo without auth)
 const PLACEHOLDER_TRAINER_ID = '00000000-0000-0000-0000-000000000001'
@@ -181,6 +181,7 @@ function UploadPageContent() {
       }
 
       // Step 4: Create session in Supabase (NO recording file)
+      if (supabaseConfigError) throw new Error(supabaseConfigError)
       setProgress('Saving session...')
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
