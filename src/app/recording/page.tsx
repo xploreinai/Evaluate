@@ -6,6 +6,15 @@ import { RequireAuth } from '@/lib/useAuth'
 
 type Status = 'idle' | 'requesting' | 'recording' | 'stopped' | 'error'
 
+// Browsers default to roughly 128 kbps, which is far more than speech needs and
+// burns through the 4.5 MB upload limit in about four minutes. Opus at 24 kbps
+// mono stays clear enough for transcription and is around five times smaller,
+// which is what makes a 20-minute session possible at all.
+const AUDIO_BITS_PER_SECOND = 24000
+
+// The server rejects request bodies above 4.5 MB, so stop a little short of it.
+const UPLOAD_LIMIT_BYTES = 4.2 * 1024 * 1024
+
 // Browsers disagree on what MediaRecorder can produce. Pick the first
 // supported type rather than assuming — Chrome gives WebM/Opus, Safari MP4.
 function pickMimeType(): string | undefined {
@@ -34,6 +43,7 @@ function RecordingPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [recordingSize, setRecordingSize] = useState(0)
+  const [liveBytes, setLiveBytes] = useState(0)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -80,15 +90,29 @@ function RecordingPageContent() {
         )
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1, // one voice, one channel — stereo would double the size
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
       streamRef.current = stream
 
       const mimeType = pickMimeType()
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+      })
       chunksRef.current = []
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+        if (e.data.size === 0) return
+        chunksRef.current.push(e.data)
+        // Chunks arrive every few seconds, so the running total is a real
+        // measurement rather than an estimate from the bitrate.
+        setLiveBytes(chunksRef.current.reduce((sum, c) => sum + c.size, 0))
       }
 
       recorder.onerror = () => {
@@ -120,9 +144,11 @@ function RecordingPageContent() {
         }
       }
 
-      recorder.start()
+      // Emit a chunk every 5s so the size on screen stays current.
+      recorder.start(5000)
       mediaRecorderRef.current = recorder
       setElapsed(0)
+      setLiveBytes(0)
       setStatus('recording')
     } catch (err: unknown) {
       const name = err instanceof Error ? err.name : ''
@@ -154,6 +180,17 @@ function RecordingPageContent() {
     }
   }, [elapsed, status, totalSeconds, stopRecording])
 
+  // Stop before the upload limit is breached. Ending early keeps everything
+  // recorded so far; running past it would make the whole session unusable.
+  useEffect(() => {
+    if (status === 'recording' && liveBytes >= UPLOAD_LIMIT_BYTES) {
+      setError(
+        'Recording stopped at the maximum size for one upload. Everything recorded so far has been saved.'
+      )
+      stopRecording()
+    }
+  }, [liveBytes, status, stopRecording])
+
   // Never leave the microphone open behind us.
   useEffect(() => {
     return () => {
@@ -166,6 +203,7 @@ function RecordingPageContent() {
     setStatus('idle')
     setElapsed(0)
     setRecordingSize(0)
+    setLiveBytes(0)
     setError(null)
     chunksRef.current = []
   }
@@ -230,6 +268,24 @@ function RecordingPageContent() {
             ? `${pad(Math.floor(elapsed / 60))}:${pad(elapsed % 60)} recorded`
             : `${durationMinutes} minute limit`}
         </p>
+
+        {isRecording && liveBytes > 0 && (
+          <div className="mt-6">
+            <div className="h-1.5 bg-white/60 rounded-full overflow-hidden max-w-xs mx-auto">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  liveBytes / UPLOAD_LIMIT_BYTES > 0.85 ? 'bg-amber-500' : 'bg-blue-500'
+                }`}
+                style={{
+                  width: `${Math.min(100, (liveBytes / UPLOAD_LIMIT_BYTES) * 100)}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {(liveBytes / 1024 / 1024).toFixed(1)} MB of 4.2 MB used
+            </p>
+          </div>
+        )}
         {status === 'stopped' && remaining === 0 && (
           <p className="text-blue-600 font-semibold mt-4">Time is up</p>
         )}

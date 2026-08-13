@@ -151,12 +151,12 @@ function HomePageInner() {
             onChange={(e) => handleDurationChange(Number(e.target.value))}
             className={inputClass}
           >
-            {[5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
+            {[5, 10, 15, 20].map((m) => (
               <option key={m} value={m}>
                 {m} minutes
               </option>
             ))}
-            {![5, 10, 15, 20, 30, 45, 60, 90].includes(duration) && (
+            {![5, 10, 15, 20].includes(duration) && (
               <option value={duration}>{duration} minutes</option>
             )}
           </select>
