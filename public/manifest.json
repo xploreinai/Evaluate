@@ -1,0 +1,46 @@
+{
+  "name": "E-valuate — Training Intelligence",
+  "short_name": "E-valuate",
+  "description": "Record a training session and turn it into a quiz your team can take from any phone.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
+  "categories": ["education", "productivity", "business"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New session",
+      "short_name": "Record",
+      "description": "Start recording a new training session",
+      "url": "/"
+    },
+    {
+      "name": "My sessions",
+      "short_name": "Sessions",
+      "description": "See your recorded sessions and quizzes",
+      "url": "/dashboard"
+    }
+  ]
+}
