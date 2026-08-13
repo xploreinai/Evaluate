@@ -7,6 +7,19 @@ import { supabase } from '@/lib/supabase'
 // Placeholder IDs (for demo without auth)
 const PLACEHOLDER_TRAINER_ID = '00000000-0000-0000-0000-000000000001'
 
+// Supabase rejects a query with a plain object ({ message, details, hint, code }),
+// not an Error — so `err.message` alone silently loses the reason.
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object') {
+    const e = err as Record<string, unknown>
+    const parts = [e.message, e.details, e.hint].filter(Boolean).join(' — ')
+    if (parts) return e.code ? `${parts} (code ${e.code})` : parts
+    return JSON.stringify(err)
+  }
+  return String(err) || 'Something went wrong.'
+}
+
 function UploadPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -182,7 +195,7 @@ function UploadPageContent() {
         .select()
         .single()
 
-      if (sessionError) throw sessionError
+      if (sessionError) throw new Error(`Saving the session failed: ${describeError(sessionError)}`)
 
       // Step 5: Insert questions into Supabase
       setProgress('Saving questions...')
@@ -200,7 +213,7 @@ function UploadPageContent() {
         .from('questions')
         .insert(questionsToInsert)
 
-      if (questionsError) throw questionsError
+      if (questionsError) throw new Error(`Saving the questions failed: ${describeError(questionsError)}`)
 
       // Step 6: Navigate to review page
       setProgress('Complete! Redirecting...')
@@ -209,8 +222,8 @@ function UploadPageContent() {
       }, 1000)
 
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.'
-      setError(message)
+      console.error('Processing failed:', err)
+      setError(describeError(err))
       setStatus('error')
     }
   }
