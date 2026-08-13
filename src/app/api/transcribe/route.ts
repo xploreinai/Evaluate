@@ -3,18 +3,19 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const audioBlob = formData.get('audio') as Blob
+    const audioFile = formData.get('audio') as File | null
 
-    if (!audioBlob) {
+    if (!audioFile) {
       return NextResponse.json(
         { error: 'No audio provided' },
         { status: 400 }
       )
     }
 
-    // Call Whisper API
+    // Preserve the client's filename — Whisper reads the extension to decide
+    // how to decode the audio, so renaming it to .wav breaks the request.
     const whisperFormData = new FormData()
-    whisperFormData.append('file', audioBlob, 'recording.wav')
+    whisperFormData.append('file', audioFile, audioFile.name || 'recording.webm')
     whisperFormData.append('model', 'whisper-1')
 
     const whisperResponse = await fetch(
@@ -29,7 +30,12 @@ export async function POST(request: NextRequest) {
     )
 
     if (!whisperResponse.ok) {
-      throw new Error('Whisper API failed')
+      const detail = await whisperResponse.text()
+      console.error('Whisper API error:', whisperResponse.status, detail)
+      return NextResponse.json(
+        { error: `Transcription failed (${whisperResponse.status}): ${detail.slice(0, 300)}` },
+        { status: 502 }
+      )
     }
 
     const { text: transcript } = await whisperResponse.json()

@@ -58,8 +58,19 @@ function UploadPageContent() {
   async function transcribeAudio(audioBlob: Blob): Promise<string> {
     setProgress('Transcribing audio...')
 
+    // Whisper identifies the audio format from the filename extension, so it
+    // has to match what the browser actually recorded (usually WebM/Opus).
+    const type = audioBlob.type || 'audio/webm'
+    const ext = type.includes('mp4')
+      ? 'mp4'
+      : type.includes('ogg')
+        ? 'ogg'
+        : type.includes('wav')
+          ? 'wav'
+          : 'webm'
+
     const formData = new FormData()
-    formData.append('audio', audioBlob, 'recording.wav')
+    formData.append('audio', audioBlob, `recording.${ext}`)
 
     const response = await fetch('/api/transcribe', {
       method: 'POST',
@@ -67,7 +78,8 @@ function UploadPageContent() {
     })
 
     if (!response.ok) {
-      throw new Error('Transcription failed')
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || 'Transcription failed')
     }
 
     const data = await response.json()
