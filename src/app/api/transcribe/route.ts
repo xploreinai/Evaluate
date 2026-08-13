@@ -5,8 +5,25 @@ import { NextRequest, NextResponse } from 'next/server'
 export const maxDuration = 60
 export const runtime = 'nodejs'
 
+// An API key pasted from a masked field carries bullet characters, which
+// cannot go into an HTTP header. Fail with a message that says so.
+function apiKeyProblem(key: string | undefined): string | null {
+  if (!key) return 'OPENAI_API_KEY is not set on the server.'
+  if (!/^[\x20-\x7E]+$/.test(key)) {
+    return 'OPENAI_API_KEY contains invalid characters — it looks like a masked key was copied instead of the real one. Re-copy it from the OpenAI dashboard.'
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const apiKey = process.env.OPENAI_API_KEY?.trim()
+    const keyProblem = apiKeyProblem(apiKey)
+    if (keyProblem) {
+      console.error('API key problem:', keyProblem)
+      return NextResponse.json({ error: keyProblem }, { status: 500 })
+    }
+
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File | null
 
@@ -28,7 +45,7 @@ export async function POST(request: NextRequest) {
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: whisperFormData,
       }

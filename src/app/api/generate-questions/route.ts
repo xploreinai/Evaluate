@@ -5,6 +5,20 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
+    const apiKey = process.env.OPENAI_API_KEY?.trim()
+    if (!apiKey) {
+      return NextResponse.json({ error: 'OPENAI_API_KEY is not set on the server.' }, { status: 500 })
+    }
+    if (!/^[\x20-\x7E]+$/.test(apiKey)) {
+      return NextResponse.json(
+        {
+          error:
+            'OPENAI_API_KEY contains invalid characters — it looks like a masked key was copied instead of the real one. Re-copy it from the OpenAI dashboard.',
+        },
+        { status: 500 }
+      )
+    }
+
     const { transcript } = await request.json()
 
     if (!transcript) {
@@ -41,7 +55,7 @@ ${transcript}`
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
