@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { Session, Question, QuestionOption } from '@/types'
+import { questionOptions } from '@/types'
+import type { Session, Question } from '@/types'
 
-const PLACEHOLDER_ORG_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function QuizPage({
   params,
@@ -42,8 +42,8 @@ export default function QuizPage({
         .from('questions')
         .select('*')
         .eq('session_id', params.id)
-        .eq('is_deleted', false)
-        .order('position')
+        .is('deleted_at', null)
+        .order('created_at')
 
       if (questionsError) throw questionsError
 
@@ -87,7 +87,7 @@ export default function QuizPage({
 
       let correctCount = 0
       questions.forEach(q => {
-        if (finalAnswers[q.id] === q.correct_key) {
+        if (finalAnswers[q.id] === q.correct) {
           correctCount++
         }
       })
@@ -97,12 +97,11 @@ export default function QuizPage({
       const { data: attempt, error: attemptError } = await supabase
         .from('quiz_attempts')
         .insert({
-          org_id: PLACEHOLDER_ORG_ID,
           session_id: params.id,
           participant_name: participantName.trim(),
           score: correctCount,
           passed: passed,
-          submitted_at: new Date().toISOString(),
+          
         })
         .select()
         .single()
@@ -110,11 +109,10 @@ export default function QuizPage({
       if (attemptError) throw attemptError
 
       const answerRows = questions.map(q => ({
-        org_id: PLACEHOLDER_ORG_ID,
         attempt_id: attempt.id,
         question_id: q.id,
-        selected_key: finalAnswers[q.id],
-        is_correct: finalAnswers[q.id] === q.correct_key,
+        selected: finalAnswers[q.id],
+        is_correct: finalAnswers[q.id] === q.correct,
       }))
 
       const { error: answersError } = await supabase
@@ -168,7 +166,7 @@ export default function QuizPage({
     return (
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-1">
-          {session.title}
+          {session.topic}
         </h2>
         <p className="text-gray-500 mb-8">
           {questions.length} questions • 5 minutes
@@ -227,12 +225,12 @@ export default function QuizPage({
       {/* Question */}
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-900 mb-6">
-          {currentQuestion.question_text}
+          {currentQuestion.question}
         </h2>
 
         {/* Answer options */}
         <div className="space-y-3">
-          {(currentQuestion.options as QuestionOption[]).map(option => (
+          {questionOptions(currentQuestion).map(option => (
             <button
               key={option.key}
               onClick={() => handleSelectAnswer(option.key)}

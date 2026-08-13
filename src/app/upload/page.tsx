@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 // Placeholder IDs (for demo without auth)
-const PLACEHOLDER_ORG_ID = '00000000-0000-0000-0000-000000000001'
 const PLACEHOLDER_TRAINER_ID = '00000000-0000-0000-0000-000000000001'
 
 function UploadPageContent() {

@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { questionOptions, optionColumns } from '@/types'
 import type { Session, Question } from '@/types'
 
-const PLACEHOLDER_ORG_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function ReviewPage({
   params,
@@ -35,9 +35,9 @@ export default function ReviewPage({
       if (err) throw err
       setSession(data)
 
-      if (data.status === 'ready' || data.status === 'published') {
-        fetchQuestions()
-      }
+      // Questions are written by the upload step before we get here, so they
+      // are always ready to load. ('ready' was a v1 status that no longer exists.)
+      fetchQuestions()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch session'
       setError(message)
@@ -51,8 +51,8 @@ export default function ReviewPage({
         .from('questions')
         .select('*')
         .eq('session_id', params.id)
-        .eq('is_deleted', false)
-        .order('position')
+        .is('deleted_at', null)
+        .order('created_at')
 
       if (err) throw err
       setQuestions(data)
@@ -64,14 +64,6 @@ export default function ReviewPage({
     }
   }
 
-  useEffect(() => {
-    if (!session || session.status === 'processing') {
-      const interval = setInterval(() => {
-        fetchSession()
-      }, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [session])
 
   async function updateQuestion(questionId: string, updates: Partial<Question>) {
     try {
@@ -92,7 +84,7 @@ export default function ReviewPage({
 
   async function deleteQuestion(questionId: string) {
     try {
-      await updateQuestion(questionId, { is_deleted: true })
+      await updateQuestion(questionId, { deleted_at: new Date().toISOString() })
       setQuestions(questions.filter(q => q.id !== questionId))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete question'
@@ -131,17 +123,11 @@ export default function ReviewPage({
     )
   }
 
-  // Processing state
-  if (isLoading || !session || session.status === 'processing') {
+  if (isLoading || !session) {
     return (
       <div className="text-center py-20">
         <div className="text-4xl mb-4 animate-spin">⚙️</div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Generating your questions…
-        </h2>
-        <p className="text-gray-500">
-          This usually takes 30–60 seconds. Please wait.
-        </p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading your questions…</h2>
       </div>
     )
   }
@@ -155,7 +141,7 @@ export default function ReviewPage({
             Review your questions
           </h2>
           <p className="text-gray-500 text-sm">
-            {session.title} • {new Date(session.session_date).toLocaleDateString()}
+            {session.topic} • {new Date(session.session_date).toLocaleDateString()}
           </p>
         </div>
         <div className="text-right">
@@ -213,9 +199,9 @@ function QuestionCard({
   onDelete: () => void
   onCancel: () => void
 }) {
-  const [text, setText] = useState(question.question_text)
-  const [options, setOptions] = useState(question.options)
-  const [correctKey, setCorrectKey] = useState(question.correct_key)
+  const [text, setText] = useState(question.question)
+  const [options, setOptions] = useState(questionOptions(question))
+  const [correctKey, setCorrectKey] = useState(question.correct)
 
   if (isEditing) {
     return (
@@ -260,9 +246,9 @@ function QuestionCard({
           <button
             onClick={() => {
               onSave({
-                question_text: text,
-                options: options,
-                correct_key: correctKey,
+                question: text,
+                ...optionColumns(options),
+                correct: correctKey,
               })
             }}
             className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -291,7 +277,7 @@ function QuestionCard({
       <div className="flex items-start justify-between mb-4">
         <div>
           <p className="text-sm font-medium text-gray-500 mb-1">Question {index}</p>
-          <p className="text-lg font-medium text-gray-900">{question.question_text}</p>
+          <p className="text-lg font-medium text-gray-900">{question.question}</p>
         </div>
         <button
           onClick={onEdit}

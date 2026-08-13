@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import jsPDF from 'jspdf'
 import type { Session, QuizAttempt, Answer, Question } from '@/types'
 
-const PLACEHOLDER_ORG_ID = '00000000-0000-0000-0000-000000000001'
 
 export default function ResultsPage({
   params,
@@ -40,12 +39,12 @@ export default function ResultsPage({
           .from('quiz_attempts')
           .select('*')
           .eq('session_id', params.id)
-          .order('submitted_at'),
+          .order('created_at'),
         supabase
           .from('questions')
           .select('*')
           .eq('session_id', params.id)
-          .eq('is_deleted', false),
+          .is('deleted_at', null),
       ])
 
       if (sessionRes.error) throw sessionRes.error
@@ -69,7 +68,7 @@ export default function ResultsPage({
         .from('quiz_attempts')
         .select('*')
         .eq('session_id', params.id)
-        .order('submitted_at')
+        .order('created_at')
 
       if (err) throw err
       setAttempts(data || [])
@@ -85,7 +84,6 @@ export default function ResultsPage({
       const { data: answers, error: err } = await supabase
         .from('answers')
         .select('question_id')
-        .eq('org_id', PLACEHOLDER_ORG_ID)
         .in('attempt_id', attempts.map(a => a.id))
         .eq('is_correct', false)
 
@@ -122,7 +120,7 @@ export default function ResultsPage({
 
       pdf.setFontSize(11)
       pdf.setTextColor(80, 80, 80)
-      pdf.text(`Session: ${session.title}`, 20, yPos)
+      pdf.text(`Session: ${session.topic}`, 20, yPos)
       yPos += 5
       pdf.text(`Date: ${new Date(session.session_date).toLocaleDateString()}`, 20, yPos)
       yPos += 5
@@ -175,7 +173,7 @@ export default function ResultsPage({
         yPos
       )
 
-      pdf.save(`${session.title}-results.pdf`)
+      pdf.save(`${session.topic}-results.pdf`)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to export PDF'
       setError(message)
@@ -213,7 +211,7 @@ export default function ResultsPage({
         Results
       </h2>
       <p className="text-gray-500 mb-8">
-        {session.title} • {new Date(session.session_date).toLocaleDateString()}
+        {session.topic} • {new Date(session.session_date).toLocaleDateString()}
       </p>
 
       {/* Summary cards */}

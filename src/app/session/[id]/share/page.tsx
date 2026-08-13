@@ -105,7 +105,7 @@ export default function SharePage({
       {/* Session info */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8">
         <p className="text-sm text-gray-500 mb-1">Session</p>
-        <h3 className="text-lg font-semibold text-gray-900">{session.title}</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{session.topic}</h3>
         <p className="text-sm text-gray-600 mt-3">
           {new Date(session.session_date).toLocaleDateString('en-US', {
             weekday: 'long',
