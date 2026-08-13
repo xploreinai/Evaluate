@@ -23,6 +23,8 @@ function UploadPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<string>('')
 
+  const [sizeMb, setSizeMb] = useState<number | null>(null)
+
   useEffect(() => {
     const date = searchParams.get('date')
     const startTime = searchParams.get('startTime')
@@ -31,6 +33,9 @@ function UploadPageContent() {
 
     if (date && startTime && endTime && topic) {
       setSessionMeta({ date, startTime, endTime, topic })
+      getRecordingFromIndexedDB(`session_${date}_${topic}`).then((blob) => {
+        if (blob) setSizeMb(blob.size / (1024 * 1024))
+      })
     }
   }, [searchParams])
 
@@ -69,6 +74,16 @@ function UploadPageContent() {
           ? 'wav'
           : 'webm'
 
+    // The server rejects request bodies over 4.5 MB before our code ever runs,
+    // so catch it here where we can explain what happened.
+    const sizeMb = audioBlob.size / (1024 * 1024)
+    if (sizeMb > 4.2) {
+      throw new Error(
+        `This recording is ${sizeMb.toFixed(1)} MB, over the 4.5 MB upload limit ` +
+        `(roughly 9 minutes of audio). Please record a shorter session.`
+      )
+    }
+
     const formData = new FormData()
     formData.append('audio', audioBlob, `recording.${ext}`)
 
@@ -78,8 +93,21 @@ function UploadPageContent() {
     })
 
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}))
-      throw new Error(data.error || 'Transcription failed')
+      // A timeout or size rejection returns an HTML error page, not JSON —
+      // fall back to the status so the real cause stays visible.
+      const text = await response.text().catch(() => '')
+      let message = `Transcription failed (HTTP ${response.status})`
+      try {
+        const parsed = JSON.parse(text)
+        if (parsed.error) message = parsed.error
+      } catch {
+        if (response.status === 413) {
+          message = 'Recording is too large to upload. Please record a shorter session.'
+        } else if (response.status === 504) {
+          message = 'Transcription timed out. Please try a shorter recording.'
+        }
+      }
+      throw new Error(message)
     }
 
     const data = await response.json()
@@ -98,7 +126,15 @@ function UploadPageContent() {
     })
 
     if (!response.ok) {
-      throw new Error('Question generation failed')
+      const text = await response.text().catch(() => '')
+      let message = `Question generation failed (HTTP ${response.status})`
+      try {
+        const parsed = JSON.parse(text)
+        if (parsed.error) message = parsed.error
+      } catch {
+        /* non-JSON error page; keep the status message */
+      }
+      throw new Error(message)
     }
 
     const data = await response.json()
@@ -217,7 +253,13 @@ function UploadPageContent() {
         <div className="bg-green-50 border border-green-200 rounded-xl p-6">
           <p className="text-green-900">
             ✓ <strong>Recording found</strong> on your device ({sessionMeta.topic})
+            {sizeMb !== null && ` — ${sizeMb.toFixed(1)} MB`}
           </p>
+          {sizeMb !== null && sizeMb > 4.2 && (
+            <p className="text-sm text-red-700 mt-2">
+              This exceeds the 4.5 MB upload limit. Please record a shorter session.
+            </p>
+          )}
           <p className="text-sm text-green-700 mt-2">
             Your recording will be transcribed and AI will generate 10 quiz questions based on the content.
           </p>

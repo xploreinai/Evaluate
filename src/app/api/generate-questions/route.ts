@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const maxDuration = 60
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const { transcript } = await request.json()
@@ -48,7 +51,12 @@ ${transcript}`
     })
 
     if (!response.ok) {
-      throw new Error('GPT API failed')
+      const detail = await response.text()
+      console.error('GPT API error:', response.status, detail)
+      return NextResponse.json(
+        { error: `Question generation failed (${response.status}): ${detail.slice(0, 300)}` },
+        { status: 502 }
+      )
     }
 
     const data = await response.json()

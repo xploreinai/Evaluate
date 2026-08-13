@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Whisper on a multi-minute recording takes far longer than the 10s default
+// this plan gives a function. 60s is the Hobby maximum.
+export const maxDuration = 60
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -43,8 +48,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ transcript })
   } catch (error) {
     console.error('Transcription error:', error)
+    const detail = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: 'Transcription failed' },
+      { error: `Transcription failed: ${detail}` },
       { status: 500 }
     )
   }
