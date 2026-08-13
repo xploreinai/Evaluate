@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function RecordingPage() {
+function RecordingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -224,5 +224,13 @@ export default function RecordingPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RecordingPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-10">Loading...</div>}>
+      <RecordingPageContent />
+    </Suspense>
   )
 }

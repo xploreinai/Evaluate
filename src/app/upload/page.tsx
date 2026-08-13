@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 const PLACEHOLDER_ORG_ID = '00000000-0000-0000-0000-000000000001'
 const PLACEHOLDER_TRAINER_ID = '00000000-0000-0000-0000-000000000001'
 
-export default function UploadPage() {
+function UploadPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -221,5 +221,13 @@ export default function UploadPage() {
         </button>
       </form>
     </div>
+  )
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-10">Loading...</div>}>
+      <UploadPageContent />
+    </Suspense>
   )
 }
