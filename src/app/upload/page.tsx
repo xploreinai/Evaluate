@@ -93,12 +93,17 @@ function UploadPageContent() {
       )
     }
 
-    const formData = new FormData()
-    formData.append('audio', audioBlob, `recording.${ext}`)
-
+    // Sent as a plain binary body, not multipart: Safari's FormData encoding
+    // could not always be parsed by the server ("Failed to parse body as
+    // FormData"). The format details travel in headers instead.
     const response = await fetch('/api/transcribe', {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'x-audio-type': type,
+        'x-audio-name': `recording.${ext}`,
+      },
+      body: audioBlob,
     })
 
     if (!response.ok) {

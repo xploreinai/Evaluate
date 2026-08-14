@@ -29,17 +29,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: keyProblem }, { status: 500 })
     }
 
-    const formData = await request.formData()
-    const audioFile = formData.get('audio') as File | null
+    // The browser sends the audio as a plain binary body rather than multipart.
+    // Safari builds multipart bodies in a way Next.js could not always parse
+    // ("Failed to parse body as FormData"), and the encoding gained us nothing:
+    // the only multipart request that matters is the one we make to Groq below,
+    // which we build here where the format is predictable.
+    const audioType = request.headers.get('x-audio-type') || 'audio/webm'
+    const audioName = request.headers.get('x-audio-name') || 'recording.webm'
+    const buffer = await request.arrayBuffer()
 
-    if (!audioFile) {
+    if (!buffer || buffer.byteLength === 0) {
       return NextResponse.json({ error: 'No audio provided' }, { status: 400 })
     }
 
-    // Preserve the client's filename — the API reads the extension to decide
-    // how to decode the audio, so renaming it breaks the request.
+    // The API reads the extension to decide how to decode the audio, so the
+    // filename has to match what the browser actually recorded.
     const upstreamForm = new FormData()
-    upstreamForm.append('file', audioFile, audioFile.name || 'recording.webm')
+    upstreamForm.append('file', new Blob([buffer], { type: audioType }), audioName)
     upstreamForm.append('model', GROQ_TRANSCRIBE_MODEL)
     upstreamForm.append('response_format', 'json')
 
