@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Groq exposes an OpenAI-compatible API, so the request shape below is the
 // same one OpenAI uses — only the host, model and key differ.
+import { resolveModel } from '@/lib/groq'
+
 const GROQ_TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-const GROQ_TRANSCRIBE_MODEL = 'whisper-large-v3-turbo'
 
 // Transcription of a multi-minute recording takes far longer than the 10s
 // default a function gets. 60s is the Hobby maximum.
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     // filename has to match what the browser actually recorded.
     const upstreamForm = new FormData()
     upstreamForm.append('file', new Blob([buffer], { type: audioType }), audioName)
-    upstreamForm.append('model', GROQ_TRANSCRIBE_MODEL)
+    upstreamForm.append('model', await resolveModel(apiKey, 'audio'))
     upstreamForm.append('response_format', 'json')
 
     const response = await fetch(GROQ_TRANSCRIBE_URL, {

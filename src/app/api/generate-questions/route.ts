@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Groq exposes an OpenAI-compatible chat endpoint.
+import { resolveModel } from '@/lib/groq'
+
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_CHAT_MODEL = 'llama-3.3-70b-versatile'
 
 export const maxDuration = 60
 export const runtime = 'nodejs'
@@ -62,6 +63,10 @@ Return ONLY valid JSON — an array, with no commentary and no markdown fencing.
 TRANSCRIPT:
 ${transcript}`
 
+    // Chosen from what Groq currently serves, so a retired model name
+    // cannot break question generation.
+    const model = await resolveModel(apiKey, 'chat')
+
     const response = await fetch(GROQ_CHAT_URL, {
       method: 'POST',
       headers: {
@@ -69,7 +74,7 @@ ${transcript}`
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: GROQ_CHAT_MODEL,
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       }),
@@ -79,7 +84,7 @@ ${transcript}`
       const detail = await response.text()
       console.error('Question generation API error:', response.status, detail)
       return NextResponse.json(
-        { error: `Question generation failed (${response.status}): ${detail.slice(0, 300)}` },
+        { error: `Question generation failed (${response.status}, model ${model}): ${detail.slice(0, 300)}` },
         { status: 502 }
       )
     }

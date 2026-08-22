@@ -93,6 +93,16 @@ function UploadPageContent() {
       )
     }
 
+    // Read the blob into memory before sending. Safari does not reliably
+    // stream a Blob that came back out of IndexedDB, and the server received
+    // an empty body ("No audio provided"). An ArrayBuffer is unambiguous.
+    const bytes = await audioBlob.arrayBuffer()
+    if (bytes.byteLength === 0) {
+      throw new Error(
+        'This recording came back empty from device storage. Please record the session again.'
+      )
+    }
+
     // Sent as a plain binary body, not multipart: Safari's FormData encoding
     // could not always be parsed by the server ("Failed to parse body as
     // FormData"). The format details travel in headers instead.
@@ -103,7 +113,7 @@ function UploadPageContent() {
         'x-audio-type': type,
         'x-audio-name': `recording.${ext}`,
       },
-      body: audioBlob,
+      body: bytes,
     })
 
     if (!response.ok) {
@@ -169,6 +179,13 @@ function UploadPageContent() {
 
       if (segments.length === 0) {
         throw new Error('No recording found. Please record audio first.')
+      }
+
+      const storedBytes = segments.reduce((sum, b) => sum + b.size, 0)
+      if (storedBytes === 0) {
+        throw new Error(
+          'The saved recording is empty. This can happen if the browser was closed while saving — please record the session again.'
+        )
       }
 
       // Step 2: Transcribe every part and join the text
