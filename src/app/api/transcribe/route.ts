@@ -23,12 +23,15 @@ function apiKeyProblem(key: string | undefined): string | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GROQ_API_KEY?.trim()
-    const keyProblem = apiKeyProblem(apiKey)
+    const rawKey = process.env.GROQ_API_KEY?.trim()
+    const keyProblem = apiKeyProblem(rawKey)
     if (keyProblem) {
       console.error('API key problem:', keyProblem)
       return NextResponse.json({ error: keyProblem }, { status: 500 })
     }
+    // apiKeyProblem() has already rejected undefined; this makes that visible
+    // to the type checker.
+    const apiKey = rawKey as string
 
     // The browser sends the audio as a plain binary body rather than multipart.
     // Safari builds multipart bodies in a way Next.js could not always parse
