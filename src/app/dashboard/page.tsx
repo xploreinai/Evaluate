@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { RequireAuth, useAuth } from '@/lib/useAuth'
 import { sessionKey, deleteRecording } from '@/lib/recordings'
+import Leaderboards from '../Leaderboards'
 import type { Session } from '@/types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -82,6 +83,10 @@ function DashboardContent() {
 
   return (
     <div>
+      <div className="mb-10">
+        <Leaderboards />
+      </div>
+
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl text-ink mb-1">Your sessions</h1>
