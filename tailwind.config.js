@@ -5,26 +5,31 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx}',
     './src/app/**/*.{js,ts,jsx,tsx}',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Palette taken from editionhotels.com/abu-dhabi — a restrained
-        // monochrome scheme with a single sand accent, and no blue at all.
+        // Every colour resolves through a CSS variable defined in globals.css,
+        // so adding .dark to <html> reskins the whole app without touching a
+        // single component class.
         ink: {
-          DEFAULT: '#111111', // headings and primary text
-          soft: '#1c1c1c',    // dark panels
+          DEFAULT: 'rgb(var(--c-ink) / <alpha-value>)',   // headings, primary text
+          soft: 'rgb(var(--c-ink-soft) / <alpha-value>)',
         },
-        muted: '#757575',     // body copy and secondary text
+        // Foreground for anything sitting on an `ink` background — white in
+        // light mode, near-black in dark, so buttons stay readable in both.
+        'on-ink': 'rgb(var(--c-on-ink) / <alpha-value>)',
+        muted: 'rgb(var(--c-muted) / <alpha-value>)',
         sand: {
-          DEFAULT: '#c8ae83', // the EDITION accent
-          dark: '#a8905f',    // hover / text on white, for contrast
-          light: '#f3ede3',   // tinted panels
+          DEFAULT: 'rgb(var(--c-sand) / <alpha-value>)',
+          dark: 'rgb(var(--c-sand-dark) / <alpha-value>)',
+          light: 'rgb(var(--c-sand-light) / <alpha-value>)',
         },
         surface: {
-          DEFAULT: '#ffffff',
-          subtle: '#f5f5f5',  // page background and quiet panels
+          DEFAULT: 'rgb(var(--c-surface) / <alpha-value>)',
+          subtle: 'rgb(var(--c-surface-subtle) / <alpha-value>)',
         },
-        line: '#e3e3e3',      // hairline borders
+        line: 'rgb(var(--c-line) / <alpha-value>)',
       },
       fontFamily: {
         // Didot is present on Apple devices, which is what the hotel site

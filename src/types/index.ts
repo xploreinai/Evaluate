@@ -17,13 +17,22 @@ export interface Profile {
 
 export interface Session {
   id: string
-  trainer_id: string | null     // no auth yet, so this can be unset
+  trainer_id: string | null
   topic: string
   session_date: string          // "YYYY-MM-DD"
   start_time: string | null     // "HH:MM"
   end_time: string | null
   status: SessionStatus
   pass_threshold: number        // percentage, default 70
+  time_limit_seconds: number | null  // null = untimed
+  created_at: string
+  updated_at: string
+}
+
+export interface Participant {
+  id: string
+  eid: string                   // employee ID — the identity across sessions
+  name: string
   created_at: string
   updated_at: string
 }
@@ -38,7 +47,9 @@ export interface Question {
   option_b: string
   option_c: string
   option_d: string
-  correct: OptionKey
+  correct: OptionKey            // kept in step with correct_keys[0]
+  correct_keys: OptionKey[]     // every correct option; one entry when single-answer
+  multi: boolean                // true when more than one answer is expected
   deleted_at: string | null     // soft delete
   created_at: string
 }
@@ -46,6 +57,7 @@ export interface Question {
 export interface QuizAttempt {
   id: string
   session_id: string
+  participant_id: string | null
   participant_name: string
   score: number | null
   total_questions: number | null
@@ -57,9 +69,20 @@ export interface Answer {
   id: string
   attempt_id: string
   question_id: string
-  selected: OptionKey
+  selected: OptionKey | null      // legacy single choice
+  selected_keys: OptionKey[]      // what the participant actually chose
   is_correct: boolean | null
   created_at: string
+}
+
+/** A multi-answer question is only right when the chosen set matches exactly. */
+export function isAnswerCorrect(question: Question, chosen: OptionKey[]): boolean {
+  const correct = question.correct_keys?.length
+    ? question.correct_keys
+    : ([question.correct] as OptionKey[])
+  if (chosen.length !== correct.length) return false
+  const set = new Set(correct)
+  return chosen.every((k) => set.has(k))
 }
 
 export interface QuestionOption {

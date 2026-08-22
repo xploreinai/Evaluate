@@ -89,7 +89,7 @@ function DashboardContent() {
         </div>
         <button
           onClick={() => router.push('/')}
-          className="bg-ink text-white uppercase tracking-wide text-xs font-medium px-5 py-3 hover:bg-black transition-colors whitespace-nowrap"
+          className="bg-ink text-on-ink uppercase tracking-wide text-xs font-medium px-5 py-3 hover:opacity-90 transition-colors whitespace-nowrap"
         >
           + New session
         </button>
@@ -111,7 +111,7 @@ function DashboardContent() {
           </p>
           <button
             onClick={() => router.push('/')}
-            className="bg-ink text-white uppercase tracking-wide text-xs font-medium px-6 py-3 hover:bg-black transition-colors"
+            className="bg-ink text-on-ink uppercase tracking-wide text-xs font-medium px-6 py-3 hover:opacity-90 transition-colors"
           >
             Record a session
           </button>
@@ -178,7 +178,7 @@ function DashboardContent() {
                     <button
                       onClick={() => setConfirmingId(null)}
                       disabled={deletingId === s.id}
-                      className="border border-ink text-ink uppercase tracking-wide text-xs font-medium px-5 py-3 hover:bg-ink hover:text-white transition-colors"
+                      className="border border-ink text-ink uppercase tracking-wide text-xs font-medium px-5 py-3 hover:bg-ink hover:text-on-ink transition-colors"
                     >
                       Cancel
                     </button>

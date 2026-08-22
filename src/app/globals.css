@@ -3,6 +3,36 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light — the palette read from editionhotels.com/abu-dhabi.
+     Values are space-separated RGB so Tailwind can apply opacity. */
+  :root {
+    --c-ink: 17 17 17;
+    --c-ink-soft: 28 28 28;
+    --c-on-ink: 255 255 255;
+    --c-muted: 117 117 117;
+    --c-sand: 200 174 131;
+    --c-sand-dark: 168 144 95;
+    --c-sand-light: 243 237 227;
+    --c-surface: 255 255 255;
+    --c-surface-subtle: 245 245 245;
+    --c-line: 227 227 227;
+  }
+
+  /* Dark — the same relationships inverted. The sand accent is lifted slightly
+     so it keeps its contrast against a dark ground. */
+  .dark {
+    --c-ink: 240 240 240;
+    --c-ink-soft: 225 225 225;
+    --c-on-ink: 17 17 17;
+    --c-muted: 150 150 150;
+    --c-sand: 200 174 131;
+    --c-sand-dark: 214 191 155;
+    --c-sand-light: 42 36 27;
+    --c-surface: 17 17 17;
+    --c-surface-subtle: 30 30 30;
+    --c-line: 60 60 60;
+  }
+
   body {
     @apply bg-surface text-muted;
     -webkit-font-smoothing: antialiased;
@@ -25,20 +55,20 @@
   }
 
   .btn-primary {
-    @apply w-full bg-ink text-white uppercase tracking-wide text-xs font-medium
-           py-4 transition-colors hover:bg-black
+    @apply w-full bg-ink text-on-ink uppercase tracking-wide text-xs font-medium
+           py-4 transition-colors hover:opacity-90
            disabled:bg-line disabled:text-muted disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
     @apply w-full bg-transparent text-ink border border-ink uppercase tracking-wide
-           text-xs font-medium py-4 transition-colors hover:bg-ink hover:text-white
+           text-xs font-medium py-4 transition-colors hover:bg-ink hover:text-on-ink
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply bg-ink text-white uppercase tracking-wide text-xs font-medium px-5 py-3
-           transition-colors hover:bg-black disabled:bg-line disabled:text-muted;
+    @apply bg-ink text-on-ink uppercase tracking-wide text-xs font-medium px-5 py-3
+           transition-colors hover:opacity-90 disabled:bg-line disabled:text-muted;
   }
 
   .card {

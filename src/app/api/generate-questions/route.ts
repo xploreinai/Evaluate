@@ -31,12 +31,15 @@ export async function POST(request: NextRequest) {
 
     const prompt = `You are an expert educator. Based on this training transcript, generate exactly 10 multiple-choice quiz questions that test understanding of the key concepts.
 
-For each question, provide:
-- A clear, concise question (1-2 sentences)
-- Four options labeled A, B, C, D
-- The correct answer (one of A, B, C, D)
+Rules:
+- Each question has four options labelled a, b, c, d.
+- Make 2 or 3 of the 10 questions have MORE THAN ONE correct answer, where the material genuinely supports it. For those, "correct" lists every correct letter.
+- The other questions have exactly one correct answer.
+- Do not write options such as "All of the above" or "Both A and B". Use a multi-answer question instead, listing the real choices.
+- Base every question strictly on the transcript. Do not invent facts.
 
-Return ONLY valid JSON — an array, with no commentary and no markdown fencing:
+Return ONLY valid JSON — an array, with no commentary and no markdown fencing.
+"correct" is ALWAYS an array, even when there is one answer:
 [
   {
     "question": "What is...",
@@ -44,7 +47,15 @@ Return ONLY valid JSON — an array, with no commentary and no markdown fencing:
     "option_b": "...",
     "option_c": "...",
     "option_d": "...",
-    "correct": "a"
+    "correct": ["a"]
+  },
+  {
+    "question": "Which two of the following...",
+    "option_a": "...",
+    "option_b": "...",
+    "option_c": "...",
+    "option_d": "...",
+    "correct": ["b", "d"]
   }
 ]
 
@@ -98,16 +109,28 @@ ${transcript}`
     }
 
     // Keep only well-formed questions so a partial response cannot produce
-    // rows that break the database insert.
-    const valid = (Array.isArray(questions) ? questions : []).filter(
-      (q) =>
-        q?.question &&
-        q?.option_a &&
-        q?.option_b &&
-        q?.option_c &&
-        q?.option_d &&
-        ['a', 'b', 'c', 'd'].includes(String(q?.correct).toLowerCase())
-    )
+    // rows that break the database insert. "correct" is normalised to an array
+    // of distinct letters, whether the model returned "a" or ["a","c"].
+    const LETTERS = ['a', 'b', 'c', 'd']
+    const valid = (Array.isArray(questions) ? questions : [])
+      .map((q) => {
+        const raw = Array.isArray(q?.correct) ? q.correct : [q?.correct]
+        const keys = Array.from(
+          new Set(raw.map((k: unknown) => String(k).trim().toLowerCase()))
+        ).filter((k) => LETTERS.includes(k as string)) as string[]
+        return { ...q, correct_keys: keys }
+      })
+      .filter(
+        (q) =>
+          q?.question &&
+          q?.option_a &&
+          q?.option_b &&
+          q?.option_c &&
+          q?.option_d &&
+          q.correct_keys.length >= 1 &&
+          // All four being "correct" is a sign the model lost the plot.
+          q.correct_keys.length < 4
+      )
 
     if (valid.length === 0) {
       return NextResponse.json(

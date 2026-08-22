@@ -213,15 +213,23 @@ function UploadPageContent() {
 
       // Step 5: Insert questions into Supabase
       setProgress('Saving questions...')
-      const questionsToInsert = questions.map((q) => ({
-        session_id: session.id,
-        question: q.question,
-        option_a: q.option_a,
-        option_b: q.option_b,
-        option_c: q.option_c,
-        option_d: q.option_d,
-        correct: q.correct.toLowerCase(),
-      }))
+      const questionsToInsert = questions.map((q) => {
+        const keys: string[] = q.correct_keys?.length
+          ? q.correct_keys
+          : [String(q.correct || 'a').toLowerCase()]
+        return {
+          session_id: session.id,
+          question: q.question,
+          option_a: q.option_a,
+          option_b: q.option_b,
+          option_c: q.option_c,
+          option_d: q.option_d,
+          correct_keys: keys,
+          multi: keys.length > 1,
+          // Kept in step for anything still reading the single-answer column.
+          correct: keys[0],
+        }
+      })
 
       const { error: questionsError } = await supabase
         .from('questions')

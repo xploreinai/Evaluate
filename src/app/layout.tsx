@@ -49,7 +49,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={display.variable}>
+    // suppressHydrationWarning: the script below sets a class on <html> before
+    // React hydrates, which would otherwise be reported as a mismatch.
+    <html lang="en" className={display.variable} suppressHydrationWarning>
+      <head>
+        {/* Applies the saved theme before the first paint, so a dark-mode user
+            never sees a white flash on load. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('evaluate-theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}if(t==='dark'){document.documentElement.classList.add('dark')}document.documentElement.style.colorScheme=t}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="font-sans bg-surface min-h-screen">
 
         <ServiceWorker />

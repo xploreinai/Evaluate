@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { questionOptions, optionColumns } from '@/types'
-import type { Session, Question } from '@/types'
+import type { Session, Question, OptionKey } from '@/types'
 import { RequireAuth } from '@/lib/useAuth'
 
 
@@ -103,6 +103,17 @@ function ReviewPageInner({
       .eq('id', params.id)
 
     if (err) setError(`Could not save the pass mark: ${err.message}`)
+  }
+
+  async function updateTimeLimit(seconds: number | null) {
+    setSession((prev) => (prev ? { ...prev, time_limit_seconds: seconds } : prev))
+
+    const { error: err } = await supabase
+      .from('sessions')
+      .update({ time_limit_seconds: seconds })
+      .eq('id', params.id)
+
+    if (err) setError(`Could not save the time limit: ${err.message}`)
   }
 
   async function publishQuiz() {
@@ -216,6 +227,55 @@ function ReviewPageInner({
         </div>
       </div>
 
+      {/* Time limit */}
+      <div className="bg-surface border border-line rounded-xl p-6 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <label htmlFor="timeLimit" className="block font-semibold text-ink">
+            Time limit
+          </label>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={session.time_limit_seconds !== null}
+            onClick={() =>
+              updateTimeLimit(session.time_limit_seconds === null ? 10 * 60 : null)
+            }
+            className={`relative w-11 h-6 border transition-colors shrink-0 ${
+              session.time_limit_seconds !== null
+                ? 'bg-ink border-ink'
+                : 'bg-surface-subtle border-line'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-4 w-4 transition-transform duration-200 ${
+                session.time_limit_seconds !== null
+                  ? 'translate-x-[22px] bg-on-ink'
+                  : 'translate-x-1 bg-ink'
+              }`}
+            />
+          </button>
+        </div>
+        <p className="text-sm text-muted mb-4">
+          {session.time_limit_seconds === null
+            ? 'Participants can take as long as they need.'
+            : 'The quiz submits automatically when time runs out.'}
+        </p>
+        {session.time_limit_seconds !== null && (
+          <select
+            id="timeLimit"
+            value={session.time_limit_seconds}
+            onChange={(e) => updateTimeLimit(Number(e.target.value))}
+            className="px-4 py-2.5 border border-line focus:ring-2 focus:ring-ink outline-none bg-surface text-ink"
+          >
+            {[2, 5, 10, 15, 20, 30, 45, 60].map((m) => (
+              <option key={m} value={m * 60}>
+                {m} minutes
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
       <button
         onClick={publishQuiz}
         disabled={questions.length < 5 || isPublishing}
@@ -246,7 +306,17 @@ function QuestionCard({
 }) {
   const [text, setText] = useState(question.question)
   const [options, setOptions] = useState(questionOptions(question))
-  const [correctKey, setCorrectKey] = useState(question.correct)
+  // Tick every option that counts as correct. More than one turns this into a
+  // "select all that apply" question for participants.
+  const [correctKeys, setCorrectKeys] = useState<OptionKey[]>(
+    question.correct_keys?.length ? question.correct_keys : [question.correct]
+  )
+
+  function toggleCorrect(key: OptionKey) {
+    setCorrectKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    )
+  }
 
   if (isEditing) {
     return (
@@ -267,12 +337,11 @@ function QuestionCard({
           {options.map((opt) => (
             <div key={opt.key} className="flex items-center gap-3">
               <input
-                type="radio"
-                name={`correct-${question.id}`}
-                value={opt.key}
-                checked={correctKey === opt.key}
-                onChange={() => setCorrectKey(opt.key)}
-                className="w-4 h-4 text-ink"
+                type="checkbox"
+                aria-label={`Option ${opt.key} is correct`}
+                checked={correctKeys.includes(opt.key)}
+                onChange={() => toggleCorrect(opt.key)}
+                className="w-4 h-4 accent-black"
               />
               <input
                 type="text"
@@ -290,19 +359,22 @@ function QuestionCard({
         <div className="flex gap-3">
           <button
             onClick={() => {
+              if (correctKeys.length === 0) return
               onSave({
                 question: text,
                 ...optionColumns(options),
-                correct: correctKey,
+                correct_keys: correctKeys,
+                multi: correctKeys.length > 1,
+                correct: correctKeys[0],
               })
             }}
-            className="flex-1 bg-ink text-white uppercase tracking-wide text-xs font-medium py-2.5 hover:bg-black transition-colors"
+            className="flex-1 bg-ink text-on-ink uppercase tracking-wide text-xs font-medium py-2.5 hover:opacity-90 transition-colors"
           >
             Save
           </button>
           <button
             onClick={onCancel}
-            className="flex-1 border border-ink text-ink uppercase tracking-wide text-xs font-medium py-2.5 hover:bg-ink hover:text-white transition-colors"
+            className="flex-1 border border-ink text-ink uppercase tracking-wide text-xs font-medium py-2.5 hover:bg-ink hover:text-on-ink transition-colors"
           >
             Cancel
           </button>
@@ -333,20 +405,23 @@ function QuestionCard({
       </div>
 
       <div className="space-y-2">
-        {options.map((opt) => (
-          <div
-            key={opt.key}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
-              opt.key === correctKey ? 'bg-surface-subtle border-line' : 'bg-surface-subtle border-line'
-            }`}
-          >
-            <span className={`font-semibold ${opt.key === correctKey ? 'text-ink' : 'text-muted'}`}>
-              {opt.key}
-            </span>
-            <span className="flex-1 text-ink">{opt.text}</span>
-            {opt.key === correctKey && <span className="text-xs font-medium text-ink">✓ Correct</span>}
-          </div>
-        ))}
+        {options.map((opt) => {
+          const isCorrect = correctKeys.includes(opt.key)
+          return (
+            <div
+              key={opt.key}
+              className={`flex items-center gap-3 px-4 py-3 border ${
+                isCorrect ? 'bg-sand-light border-sand' : 'bg-surface-subtle border-line'
+              }`}
+            >
+              <span className={`font-mono text-sm uppercase ${isCorrect ? 'text-ink' : 'text-muted'}`}>
+                {opt.key}
+              </span>
+              <span className="flex-1 text-ink">{opt.text}</span>
+              {isCorrect && <span className="text-xs text-sand-dark">✓ Correct</span>}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
