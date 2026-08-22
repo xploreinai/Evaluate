@@ -29,6 +29,39 @@ function pickMimeType(): string | undefined {
   return candidates.find((t) => MediaRecorder.isTypeSupported(t))
 }
 
+// Safari rejects constructor options that Chrome accepts — an unsupported
+// mimeType or bitrate throws rather than being ignored. Try the ideal
+// configuration first and give ground one option at a time, so recording
+// still starts on a stricter browser instead of failing outright.
+function createRecorder(stream: MediaStream): { recorder: MediaRecorder; how: string } {
+  const mimeType = pickMimeType()
+  const attempts: Array<{ opts: MediaRecorderOptions; how: string }> = [
+    ...(mimeType
+      ? [
+          {
+            opts: { mimeType, audioBitsPerSecond: AUDIO_BITS_PER_SECOND },
+            how: `${mimeType} @ ${AUDIO_BITS_PER_SECOND / 1000}kbps`,
+          },
+          { opts: { mimeType }, how: `${mimeType} @ browser default` },
+        ]
+      : []),
+    { opts: { audioBitsPerSecond: AUDIO_BITS_PER_SECOND }, how: `default type @ ${AUDIO_BITS_PER_SECOND / 1000}kbps` },
+    { opts: {}, how: 'browser defaults' },
+  ]
+
+  let lastError: unknown
+  for (const { opts, how } of attempts) {
+    try {
+      return { recorder: new MediaRecorder(stream, opts), how }
+    } catch (err) {
+      lastError = err
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('This browser could not start an audio recorder.')
+}
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 function RecordingPageContent() {
@@ -47,6 +80,8 @@ function RecordingPageContent() {
   const [elapsed, setElapsed] = useState(0)
   const [totalBytes, setTotalBytes] = useState(0)
   const [segmentCount, setSegmentCount] = useState(0)
+  const [encoding, setEncoding] = useState<string | null>(null)
+  const [chunkCount, setChunkCount] = useState(0)
 
   const streamRef = useRef<MediaStream | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -63,14 +98,15 @@ function RecordingPageContent() {
 
   const startSegment = useCallback(
     (stream: MediaStream) => {
-      const mimeType = pickMimeType()
-      const recorder = new MediaRecorder(stream, {
-        ...(mimeType ? { mimeType } : {}),
-        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
-      })
+      const { recorder, how } = createRecorder(stream)
+      setEncoding(how)
+      const mimeType = recorder.mimeType || pickMimeType()
       chunksRef.current = []
 
       recorder.ondataavailable = (e) => {
+        // Counted even when empty: a chunk count stuck at 0 while the timer
+        // runs is the signature of a recorder that started but captured nothing.
+        setChunkCount((n) => n + 1)
         if (e.data.size === 0) return
         chunksRef.current.push(e.data)
 
@@ -85,8 +121,12 @@ function RecordingPageContent() {
         }
       }
 
-      recorder.onerror = () => {
-        setError('Recording stopped unexpectedly. Anything recorded so far has been saved.')
+      recorder.onerror = (e: Event) => {
+        const err = (e as unknown as { error?: DOMException }).error
+        setError(
+          `Recording stopped unexpectedly${err?.name ? ` (${err.name})` : ''}. ` +
+            'Anything recorded so far has been saved.'
+        )
         setStatus('error')
       }
 
@@ -164,6 +204,7 @@ function RecordingPageContent() {
       setSegmentCount(0)
       setTotalBytes(0)
       setElapsed(0)
+      setChunkCount(0)
 
       startSegment(stream)
       setStatus('recording')
@@ -366,6 +407,28 @@ function RecordingPageContent() {
           automatically, so there is no limit on how long you record.
         </p>
       </div>
+
+      {/* What the browser is actually doing. Visible once recording starts so a
+          failure can be diagnosed from a screenshot rather than guesswork. */}
+      {(status !== 'idle' || error) && (
+        <details className="mt-4 text-xs text-muted">
+          <summary className="cursor-pointer">Recording details</summary>
+          <dl className="mt-2 space-y-1 font-mono">
+            <div>state: {status}</div>
+            <div>encoder: {encoding ?? 'not started'}</div>
+            <div>audio chunks received: {chunkCount}</div>
+            <div>bytes captured: {totalBytes}</div>
+            <div>parts saved: {segmentCount}</div>
+            <div>
+              supported: {typeof MediaRecorder === 'undefined'
+                ? 'MediaRecorder missing'
+                : ['audio/webm', 'audio/mp4', 'audio/ogg']
+                    .filter((t) => MediaRecorder.isTypeSupported(t))
+                    .join(', ') || 'none'}
+            </div>
+          </dl>
+        </details>
+      )}
     </div>
   )
 }
