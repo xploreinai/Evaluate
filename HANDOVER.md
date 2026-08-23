@@ -88,31 +88,75 @@ run the build. Several bugs in this project were misdiagnosed by guessing.
 Run in the Supabase SQL Editor, in order. **001_schema_v2 → 003 → 004 → 005 →
 006 → 007.** (`001_schema.sql` and `002_rls*.sql` are v1 leftovers — do not run.)
 
-`007_participants_multi_timer.sql` is confirmed applied.
-**Unconfirmed: whether 005 and 006 were run.** If deleting a session fails with
-a foreign-key error about `answers`, 006 has not been run.
+005 (part 2) and 007 are confirmed applied — see "Migration status, rechecked"
+below. If deleting a session ever fails with a foreign-key error about
+`answers`, re-run 005 and 006; both are safe to run again.
 
 ---
 
 ## Open items
 
-1. **RAM DO THIS: test recording on iPhone Safari.** Last attempt failed with
-   "No audio provided" — Safari sent an empty body. Fixed by reading the blob
-   into an ArrayBuffer before sending, but **not yet verified on a real phone**.
-   Record fresh; don't reuse the old stored recording.
-2. **Never verified end to end:** taking a quiz as a participant — multi-answer
-   scoring, the timer, the review screen, and the leaderboard populating.
-   Everything was tested in isolation; nobody has completed a real submission.
-3. **A segment boundary has never actually occurred.** Rotation triggers around
+*Last verified 23 Aug 2026 against the live app and the live database.*
+
+1. **RAM DO THIS: test recording on iPhone Safari.** Still the one thing only a
+   real phone can settle. The **server half is now proven**: a genuine MP4/AAC
+   clip posted as a raw binary body to the live `/api/transcribe` came back
+   correctly transcribed (HTTP 200, 1.7 s). So the format, the headers and the
+   ArrayBuffer fix are all confirmed good, and the deployed bundle really does
+   contain them. What is untested is only the phone-side half — Safari's
+   `MediaRecorder` and the IndexedDB round trip. Record fresh; don't reuse the
+   old stored recording.
+2. **Taking a quiz end to end — now verified.** A full run was completed on the
+   live app against "Chinese AI models" (10 questions, 3 multi-answer, 5-minute
+   timer, 60% pass mark), answering 8 correctly on purpose:
+   - the timer counts down and persists across questions
+   - nothing is pre-selected; multi-answer questions hold several selections at once
+   - a **partially** correct multi-answer scores as wrong (all-or-nothing, by design)
+   - the review screen lists every question with the correct answers marked,
+     and the score only at the bottom: 8/10, 80%, PASSED
+   - the attempt, its 10 answer rows and the participant were all written
+   **Still unverified: the leaderboards and the participant list**, because both
+   sit behind trainer login. See item 3 — that is now a two-minute check.
+3. **RAM DO THIS: log in and look at the dashboard and participants page.**
+   A real attempt now exists under employee ID `__testrun__` ("Test Run (delete
+   me)") on the "Chinese AI models" quiz, so those screens finally have data to
+   draw. Confirm the person appears in the participant list, their history opens,
+   and the "most taken" leaderboard shows them. The "best average" board needs
+   two attempts, so it will still be empty — that is correct, not a bug.
+4. **RAM DO THIS: delete the test data afterwards.** In the Supabase SQL editor:
+   `delete from participants where eid in ('__testrun__', '__selftest__');`
+   Attempts and answers go with it through the cascade. (Whether the older
+   `__selftest__` row still exists could not be checked from outside — the
+   `participants` table is deliberately unreadable without trainer login — so
+   the statement covers both.)
+5. **RAM ANSWER ME: the "Edition FLS" session has no owner.** Its `trainer_id`
+   is null, left over from before trainer login existed. It is still published,
+   so its QR code still works and anyone can take it — but **no trainer can ever
+   read its results**, because every trainer policy matches on `trainer_id`. It
+   also will not show in your dashboard. Do you want it adopted or retired?
+   - adopt: `update sessions set trainer_id = '20671aaf-1240-456a-9793-5b9dbffb599e' where trainer_id is null;`
+   - retire: `update sessions set status = 'draft' where trainer_id is null;`
+   The other three sessions are all owned correctly.
+6. **A segment boundary has never actually occurred.** Rotation triggers around
    20 minutes. Expect possibly a word lost at the join; if so, overlap the
    segments slightly instead of butting them together.
-4. `.env.local` still contains the placeholder `GROQ_API_KEY=gsk_your-key-here`.
+7. `.env.local` still contains the placeholder `GROQ_API_KEY=gsk_your-key-here`.
    Only affects running locally; Vercel has the real key.
-5. A test row `eid = '__selftest__'` exists in `participants`. Invisible in the
-   UI (the list is built from people with attempts). Remove with:
-   `delete from participants where eid = '__selftest__';`
-6. **The database is open to anyone with the URL for participant-facing data.**
+8. **Minor, review screen.** When a multi-answer question is marked incorrect,
+   the screen marks the correct options but does not show which of them the
+   participant actually picked — so someone who chose two of three right answers
+   cannot see what they missed. Worth a "you chose this" marker eventually.
+9. **The database is open to anyone with the URL for participant-facing data.**
    Fine for a pilot. Revisit before wider rollout.
+
+## Migration status, rechecked
+
+`sessions.pass_threshold` and `sessions.time_limit_seconds` both exist on the
+live database, so **005 (part 2) and 007 are applied**. The delete cascade added
+by 005 part 1 and 006 could not be checked from outside — `pg_constraint` is not
+reachable through the REST API. Both files are safe to run again, so if a delete
+ever fails with a foreign-key error, just re-run 005 and 006 rather than
+investigating.
 
 ---
 
