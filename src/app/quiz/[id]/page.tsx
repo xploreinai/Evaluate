@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { questionOptions, isAnswerCorrect } from '@/types'
+import { errorMessage } from '@/lib/errors'
 import type { Session, Question, OptionKey } from '@/types'
 
 type Phase = 'identify' | 'quiz' | 'review'
@@ -52,7 +53,7 @@ export default function QuizPage({ params }: { params: { id: string } }) {
         setSession(s)
         setQuestions(q || [])
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load quiz')
+        setError(errorMessage(err, 'Failed to load quiz'))
       } finally {
         setIsLoading(false)
       }
@@ -107,7 +108,7 @@ export default function QuizPage({ params }: { params: { id: string } }) {
         setPhase('review')
       } catch (err) {
         submittedRef.current = false
-        setError(err instanceof Error ? err.message : 'Could not submit your answers')
+        setError(errorMessage(err, 'Could not submit your answers'))
       } finally {
         setIsSubmitting(false)
       }
@@ -146,7 +147,10 @@ export default function QuizPage({ params }: { params: { id: string } }) {
       if (session?.time_limit_seconds) setRemaining(session.time_limit_seconds)
       setPhase('quiz')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the quiz')
+      // The reason matters here — an employee ID already registered to
+      // someone else is refused by upsert_participant, and that explanation
+      // arrives as a plain Supabase object rather than an Error.
+      setError(errorMessage(err, 'Could not start the quiz'))
     } finally {
       setIsSubmitting(false)
     }
