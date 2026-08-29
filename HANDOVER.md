@@ -78,6 +78,8 @@ run the build. Several bugs in this project were misdiagnosed by guessing.
 - Participant list, individual history, two leaderboards (most taken / best
   average, the latter needs ≥2 attempts)
 - Dark/light toggle (whole palette flips via CSS variables), home button
+- Sign out lives in an account menu behind the initial-letter button, not loose
+  in the header — it was close enough to home to be tapped by accident
 - PWA — installable to home screen; the service worker deliberately caches
   **nothing**, because stale bundles cost hours of debugging earlier
 - Styled after editionhotels.com/abu-dhabi: Didot/Playfair headings (uppercase,

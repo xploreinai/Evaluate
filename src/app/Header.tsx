@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/useAuth'
@@ -10,10 +11,17 @@ export default function Header() {
   const pathname = usePathname()
   const { user, loading } = useAuth()
 
+  // Sign out used to sit directly beside the home button, close enough that a
+  // thumb aiming for home could end the session by mistake. It now lives
+  // behind this menu, so leaving takes a second, deliberate tap.
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   // Participants taking a quiz are not trainers — keep their screen clean.
   const isParticipantView = pathname?.startsWith('/quiz')
 
   async function signOut() {
+    setMenuOpen(false)
     await supabase.auth.signOut()
     router.replace('/login')
   }
@@ -21,6 +29,28 @@ export default function Header() {
   // Home means the dashboard for a signed-in trainer, otherwise the landing page.
   const home = user ? '/dashboard' : '/'
   const atHome = pathname === home
+
+  // Close on a click anywhere else, and on Escape.
+  useEffect(() => {
+    if (!menuOpen) return
+    function onPointerDown(e: PointerEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
+
+  // Never leave the menu hanging open over a page the trainer has moved to.
+  useEffect(() => setMenuOpen(false), [pathname])
+
+  const initial = user?.email?.trim()?.[0]?.toUpperCase() || '?'
 
   return (
     <header className="bg-surface border-b border-line sticky top-0 z-10">
@@ -36,7 +66,7 @@ export default function Header() {
           </span>
         </button>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {!isParticipantView && !loading && user && (
             <>
               <button
@@ -44,7 +74,9 @@ export default function Header() {
                 disabled={atHome}
                 title="Home"
                 aria-label="Home"
-                className="text-muted hover:text-ink disabled:opacity-40 disabled:hover:text-muted transition-colors px-1"
+                // p-2 rather than px-1: a comfortable thumb target, and the
+                // padding itself keeps a stray tap away from its neighbour.
+                className="text-muted hover:text-ink disabled:opacity-40 disabled:hover:text-muted transition-colors p-2 -m-0.5"
               >
                 {/* Simple house outline, drawn to sit with the hairline borders */}
                 <svg
@@ -63,12 +95,45 @@ export default function Header() {
                   <path d="M9.75 21v-6h4.5v6" />
                 </svg>
               </button>
-              <button
-                onClick={signOut}
-                className="text-xs uppercase tracking-wide text-muted hover:text-ink transition-colors"
-              >
-                Sign out
-              </button>
+
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  title="Account"
+                  aria-label="Account"
+                  className={`w-8 h-8 border text-xs uppercase tracking-wide transition-colors ${
+                    menuOpen
+                      ? 'border-ink bg-surface-subtle text-ink'
+                      : 'border-line text-muted hover:border-ink hover:text-ink'
+                  }`}
+                >
+                  {initial}
+                </button>
+
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Account"
+                    className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-3rem)] border border-ink bg-surface z-20"
+                  >
+                    <div className="px-4 py-3 border-b border-line">
+                      <p className="text-[10px] text-muted uppercase tracking-wide">
+                        Signed in as
+                      </p>
+                      <p className="text-xs text-ink break-all mt-1">{user.email}</p>
+                    </div>
+                    <button
+                      role="menuitem"
+                      onClick={signOut}
+                      className="w-full text-left px-4 py-3 text-xs uppercase tracking-wide text-ink hover:bg-surface-subtle transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
 
