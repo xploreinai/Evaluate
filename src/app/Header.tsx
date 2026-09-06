@@ -50,6 +50,28 @@ export default function Header() {
   // Never leave the menu hanging open over a page the trainer has moved to.
   useEffect(() => setMenuOpen(false), [pathname])
 
+  // Administrators get an extra item in the menu. This asks the database what
+  // role the signed-in person has; before the multi-property migrations are run
+  // that function does not exist, so any failure just means "not an admin" and
+  // the item stays hidden rather than the header breaking.
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false)
+      return
+    }
+    let cancelled = false
+    supabase
+      .rpc('current_role_name')
+      .then(({ data, error }) => {
+        if (cancelled || error) return
+        setIsAdmin(data === 'super_admin' || data === 'org_admin')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
   const initial = user?.email?.trim()?.[0]?.toUpperCase() || '?'
 
   return (
@@ -124,6 +146,15 @@ export default function Header() {
                       </p>
                       <p className="text-xs text-ink break-all mt-1">{user.email}</p>
                     </div>
+                    {isAdmin && (
+                      <button
+                        role="menuitem"
+                        onClick={() => router.push('/admin')}
+                        className="w-full text-left px-4 py-3 text-xs uppercase tracking-wide text-ink hover:bg-surface-subtle transition-colors border-b border-line"
+                      >
+                        Administration
+                      </button>
+                    )}
                     <button
                       role="menuitem"
                       onClick={signOut}
