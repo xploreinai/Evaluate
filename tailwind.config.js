@@ -19,6 +19,9 @@ module.exports = {
         // Foreground for anything sitting on an `ink` background — white in
         // light mode, near-black in dark, so buttons stay readable in both.
         'on-ink': 'rgb(var(--c-on-ink) / <alpha-value>)',
+        // Foreground for anything sitting on the accent; flips with the theme
+        // because the accent is deep in light mode and lifted in dark mode.
+        'on-accent': 'rgb(var(--c-on-accent) / <alpha-value>)',
         muted: 'rgb(var(--c-muted) / <alpha-value>)',
         sand: {
           DEFAULT: 'rgb(var(--c-sand) / <alpha-value>)',
@@ -30,6 +33,25 @@ module.exports = {
           subtle: 'rgb(var(--c-surface-subtle) / <alpha-value>)',
         },
         line: 'rgb(var(--c-line) / <alpha-value>)',
+        // Verdant primary accent — "live", "correct", "go".
+        accent: {
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          dark: 'rgb(var(--c-accent-dark) / <alpha-value>)',
+          light: 'rgb(var(--c-accent-light) / <alpha-value>)',
+        },
+        // Status, kept separate from the accent so a colour carries meaning.
+        positive: {
+          DEFAULT: 'rgb(var(--c-positive) / <alpha-value>)',
+          light: 'rgb(var(--c-positive-light) / <alpha-value>)',
+        },
+        warn: {
+          DEFAULT: 'rgb(var(--c-warn) / <alpha-value>)',
+          light: 'rgb(var(--c-warn-light) / <alpha-value>)',
+        },
+        critical: {
+          DEFAULT: 'rgb(var(--c-critical) / <alpha-value>)',
+          light: 'rgb(var(--c-critical-light) / <alpha-value>)',
+        },
       },
       fontFamily: {
         // Didot is present on Apple devices, which is what the hotel site

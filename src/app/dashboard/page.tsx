@@ -8,9 +8,12 @@ import { sessionKey, deleteRecording } from '@/lib/recordings'
 import Leaderboards from '../Leaderboards'
 import type { Session } from '@/types'
 
+// Colour carries the state, so the list can be read at a glance rather than
+// word by word. Amber = still your work in progress, green = out there and
+// live, grey = finished with.
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-sand-light text-sand-dark border-sand',
-  published: 'bg-sand-light text-muted border-sand',
+  draft: 'bg-warn-light text-warn border-warn/40',
+  published: 'bg-positive-light text-positive border-positive/40',
   closed: 'bg-surface-subtle text-muted border-line',
 }
 
@@ -74,6 +77,31 @@ function DashboardContent() {
     setConfirmingId(null)
   }
 
+  // Sessions gathered under the month they were held in, newest month first.
+  // The list was one long undifferentiated run, which got hard to scan the
+  // moment there were more than a handful.
+  const months = (() => {
+    const groups = new Map<string, { label: string; items: Session[] }>()
+    for (const s of sessions) {
+      const d = new Date(`${s.session_date}T00:00:00`)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!groups.has(key)) {
+        groups.set(key, {
+          label: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+          items: [],
+        })
+      }
+      groups.get(key)!.items.push(s)
+    }
+    return Array.from(groups.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, g]) => ({
+        key,
+        label: g.label,
+        items: g.items.sort((a, b) => b.session_date.localeCompare(a.session_date)),
+      }))
+  })()
+
   // Where a session should take you depends on how far it has got.
   function destinationFor(s: Session) {
     if (s.status === 'published') return `/session/${s.id}/share`
@@ -122,8 +150,17 @@ function DashboardContent() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {sessions.map((s) => (
+        <div className="space-y-10">
+          {months.map((month) => (
+            <section key={month.key}>
+              <div className="flex items-baseline justify-between border-b border-line pb-2 mb-4">
+                <h2 className="text-lg text-ink">{month.label}</h2>
+                <span className="text-[11px] uppercase tracking-wide text-muted">
+                  {month.items.length} {month.items.length === 1 ? 'session' : 'sessions'}
+                </span>
+              </div>
+              <div className="space-y-3">
+          {month.items.map((s) => (
             <div
               key={s.id}
               className="bg-surface border border-line rounded-xl overflow-hidden hover:border-ink transition-colors"
@@ -191,6 +228,9 @@ function DashboardContent() {
                 </div>
               )}
             </div>
+          ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

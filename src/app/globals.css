@@ -6,31 +6,73 @@
   /* Light — the palette read from editionhotels.com/abu-dhabi.
      Values are space-separated RGB so Tailwind can apply opacity. */
   :root {
-    --c-ink: 17 17 17;
-    --c-ink-soft: 28 28 28;
+    /* Ink is a deep warm slate rather than pure black — it reads as chosen
+       rather than as a default, and is easier to sit beside a colour. */
+    --c-ink: 26 30 33;
+    --c-ink-soft: 46 52 56;
     --c-on-ink: 255 255 255;
-    --c-muted: 117 117 117;
+    --c-muted: 111 116 120;
+
+    /* The heritage sand from editionhotels.com, kept as the secondary. */
     --c-sand: 200 174 131;
-    --c-sand-dark: 168 144 95;
-    --c-sand-light: 243 237 227;
-    --c-surface: 255 255 255;
-    --c-surface-subtle: 245 245 245;
-    --c-line: 227 227 227;
+    --c-sand-dark: 156 130 85;
+    --c-sand-light: 245 238 227;
+
+    /* Verdant green is the new primary accent: it is what "correct", "live"
+       and "progress" look like in every learning app worth copying, and it
+       sits happily next to the gold rather than fighting it. */
+    --c-accent: 20 122 88;
+    --c-accent-dark: 15 95 68;
+    --c-accent-light: 226 243 235;
+    /* Text sitting ON the accent. White works on the deep green of the light
+       theme; the dark theme lifts the green, so this flips to near-black. */
+    --c-on-accent: 255 255 255;
+
+    /* Status colours, deliberately separate from the accent so a chip means
+       something rather than just being decorated. */
+    --c-positive: 20 122 88;
+    --c-positive-light: 226 243 235;
+    --c-warn: 173 116 22;
+    --c-warn-light: 252 243 224;
+    --c-critical: 166 54 54;
+    --c-critical-light: 250 234 234;
+
+    /* Warm off-white, not clinical white. */
+    --c-surface: 253 252 250;
+    --c-surface-subtle: 246 244 240;
+    --c-line: 228 224 217;
   }
 
   /* Dark — the same relationships inverted. The sand accent is lifted slightly
      so it keeps its contrast against a dark ground. */
   .dark {
-    --c-ink: 240 240 240;
-    --c-ink-soft: 225 225 225;
-    --c-on-ink: 17 17 17;
-    --c-muted: 150 150 150;
-    --c-sand: 200 174 131;
-    --c-sand-dark: 214 191 155;
-    --c-sand-light: 42 36 27;
-    --c-surface: 17 17 17;
-    --c-surface-subtle: 30 30 30;
-    --c-line: 60 60 60;
+    --c-ink: 240 238 234;
+    --c-ink-soft: 222 219 214;
+    --c-on-ink: 20 23 26;
+    --c-muted: 150 154 158;
+
+    --c-sand: 205 180 139;
+    --c-sand-dark: 219 199 165;
+    --c-sand-light: 45 39 29;
+
+    /* Lifted so the green keeps its contrast on a dark ground; the tinted
+       "light" values become dim washes rather than pale ones. */
+    --c-accent: 74 190 146;
+    --c-accent-dark: 116 209 172;
+    --c-accent-light: 22 45 37;
+    --c-on-accent: 18 33 27;
+
+    --c-positive: 74 190 146;
+    --c-positive-light: 22 45 37;
+    --c-warn: 224 175 88;
+    --c-warn-light: 48 39 20;
+    --c-critical: 226 122 122;
+    --c-critical-light: 52 28 28;
+
+    /* Very dark, faintly warm — not flat black. */
+    --c-surface: 20 23 26;
+    --c-surface-subtle: 31 35 39;
+    --c-line: 58 63 68;
   }
 
   body {
@@ -55,8 +97,8 @@
   }
 
   .btn-primary {
-    @apply w-full bg-ink text-on-ink uppercase tracking-wide text-xs font-medium
-           py-4 transition-colors hover:opacity-90
+    @apply w-full bg-accent text-on-accent uppercase tracking-wide text-xs font-medium
+           py-4 transition-colors hover:bg-accent-dark
            disabled:bg-line disabled:text-muted disabled:cursor-not-allowed;
   }
 
